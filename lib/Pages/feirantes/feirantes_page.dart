@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../Model/feirante.dart';
-import '../Feiras Trabalhadas/feiras_trabalhadas.dart';
 
 class FeirantesCadastradosScreen extends StatefulWidget {
   const FeirantesCadastradosScreen({super.key});
@@ -120,24 +119,6 @@ class _FeirantesCadastradosScreenState extends State<FeirantesCadastradosScreen>
                       ],
                     ),
                     onTap: () {
-                      print('Clicou no feirante: ${feirante.nome}');
-                      try {
-                        // Navegar para a tela de feiras trabalhadas com o feirante selecionado
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => FeirasTrabalhadasScreen(feirante: feirante),
-                          ),
-                        );
-                      } catch (e, stackTrace) {
-                        print('Erro ao abrir FeirasTrabalhadasScreen: $e\n$stackTrace');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Erro ao abrir tela de feiras: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
                     },
                   ),
                 );

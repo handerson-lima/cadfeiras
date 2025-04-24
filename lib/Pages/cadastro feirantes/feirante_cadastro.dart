@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
-import '../Feiras Trabalhadas/Components/feiras_selection.dart';
-import '../Feiras Trabalhadas/Components/produtos_selection.dart';
+import 'Components/feiras_selection.dart';
+import 'Components/produtos_selection.dart';
 
 class FeiranteCadastroScreen extends StatefulWidget {
   const FeiranteCadastroScreen({super.key});
