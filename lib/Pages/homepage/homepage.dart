@@ -74,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.person_add),
-                title: const Text('Cadastros de Feirantes'),
+                title: const Text('Novo Cadastro'),
                 selected: _selectedIndex == 0,
                 selectedTileColor: Colors.blue.withOpacity(0.1),
                 onTap: () => _onItemTapped(0),
@@ -102,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   ListTile(
                     leading: const Icon(Icons.person_add),
-                    title: const Text('Cadastros de Feirantes'),
+                    title: const Text('Novo Cadastro'),
                     selected: _selectedIndex == 0,
                     selectedTileColor: Colors.blue.withOpacity(0.1),
                     onTap: () => _onItemTapped(0),
