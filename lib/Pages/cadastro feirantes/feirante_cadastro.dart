@@ -1,7 +1,11 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+
+import '../Feiras Trabalhadas/Components/feiras_selection.dart';
+import '../Feiras Trabalhadas/Components/produtos_selection.dart';
 
 class FeiranteCadastroScreen extends StatefulWidget {
   const FeiranteCadastroScreen({super.key});
@@ -10,19 +14,22 @@ class FeiranteCadastroScreen extends StatefulWidget {
   _FeiranteCadastroScreenState createState() => _FeiranteCadastroScreenState();
 }
 
+
 class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nomeController = TextEditingController();
   final _cpfController = TextEditingController();
-  final _ruaController = TextEditingController();
-  final _numeroController = TextEditingController();
-  final _bairroController = TextEditingController();
+  final _enderecoController = TextEditingController();
   final _complementoController = TextEditingController();
   final _cidadeController = TextEditingController();
   final _dependentesQuantidadeController = TextEditingController();
   final _telefoneController = TextEditingController();
+  final _quantidadeBancasController = TextEditingController();
+  final _localColetaController = TextEditingController();
   String? _dependentesSelecao;
   Uint8List? _imagemSelecionada;
+  final Set<String> _feirasSelecionadas = {};
+  final Set<String> _produtosSelecionados = {};
 
   final _cpfFormatter = MaskTextInputFormatter(
     mask: '###.###.###-##',
@@ -37,13 +44,13 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
   void dispose() {
     _nomeController.dispose();
     _cpfController.dispose();
-    _ruaController.dispose();
-    _numeroController.dispose();
-    _bairroController.dispose();
+    _enderecoController.dispose();
     _complementoController.dispose();
     _cidadeController.dispose();
     _dependentesQuantidadeController.dispose();
     _telefoneController.dispose();
+    _quantidadeBancasController.dispose();
+    _localColetaController.dispose();
     super.dispose();
   }
 
@@ -58,11 +65,60 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
     }
   }
 
+  // Abrir o diálogo de seleção de feiras
+  Future<void> _selectFeiras() async {
+    final selectedFeiras = await showDialog<Set<String>>(
+      context: context,
+      builder: (context) => FeirasSelectionWidget(
+        initialSelections: _feirasSelecionadas,
+      ),
+    );
+
+    if (selectedFeiras != null) {
+      setState(() {
+        _feirasSelecionadas.clear();
+        _feirasSelecionadas.addAll(selectedFeiras);
+      });
+    }
+  }
+
+  // Abrir o diálogo de seleção de produtos
+  Future<void> _selectProdutos() async {
+    final selectedProdutos = await showDialog<Set<String>>(
+      context: context,
+      builder: (context) => ProdutosSelectionWidget(
+        initialSelections: _produtosSelecionados,
+      ),
+    );
+
+    if (selectedProdutos != null) {
+      setState(() {
+        _produtosSelecionados.clear();
+        _produtosSelecionados.addAll(selectedProdutos);
+      });
+    }
+  }
+
   void _submit() {
     if (_formKey.currentState!.validate()) {
       // Simular ação de cadastro (pode integrar com backend)
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cadastro de feirante bem-sucedido!')),
+        SnackBar(
+          content: Text(
+            'Cadastro de feirante bem-sucedido!\n'
+                'Nome: ${_nomeController.text}\n'
+                'CPF: ${_cpfController.text}\n'
+                'Endereço: ${_enderecoController.text}\n'
+                'Complemento: ${_complementoController.text.isEmpty ? "Não informado" : _complementoController.text}\n'
+                'Cidade: ${_cidadeController.text}\n'
+                'Dependentes: ${_dependentesSelecao ?? "Não informado"}${_dependentesSelecao == "Sim" ? " (Quantidade: ${_dependentesQuantidadeController.text})" : ""}\n'
+                'Telefone: ${_telefoneController.text}\n'
+                'Feiras em que atua: ${_feirasSelecionadas.isEmpty ? "Nenhuma" : _feirasSelecionadas.join(", ")}\n'
+                'Produtos que comercializa: ${_produtosSelecionados.isEmpty ? "Nenhum" : _produtosSelecionados.join(", ")}\n'
+                'Quantidade de bancas: ${_quantidadeBancasController.text.isEmpty ? "Não informado" : _quantidadeBancasController.text}\n'
+                'Local da coleta: ${_localColetaController.text.isEmpty ? "Não informado" : _localColetaController.text}',
+          ),
+        ),
       );
       // Voltar para a tela de login
       Navigator.popUntil(context, (route) => route.isFirst);
@@ -72,6 +128,18 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Cadastro de Feirantes',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: Colors.blueGrey,
+        automaticallyImplyLeading: false, // Remove o botão de voltar
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -89,16 +157,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              // Título
-              const Text(
-                'CADASTRO DE FEIRANTES',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
-              ),
-              const SizedBox(height: 40),
               // Formulário
               Form(
                 key: _formKey,
@@ -150,7 +208,7 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         labelText: 'CPF',
-                        prefixIcon: Icon(Icons.account_box),
+                        prefixIcon: const Icon(Icons.badge),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -168,11 +226,11 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    // Campo Rua
+                    // Campo Endereço
                     TextFormField(
-                      controller: _ruaController,
+                      controller: _enderecoController,
                       decoration: InputDecoration(
-                        labelText: 'Rua',
+                        labelText: 'Endereço',
                         prefixIcon: const Icon(Icons.location_on),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -182,48 +240,7 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Por favor, insira a rua';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    // Campo Nº
-                    TextFormField(
-                      controller: _numeroController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Nº',
-                        prefixIcon: const Icon(Icons.numbers),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Por favor, insira o número';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    // Campo Bairro
-                    TextFormField(
-                      controller: _bairroController,
-                      decoration: InputDecoration(
-                        labelText: 'Bairro',
-                        prefixIcon: const Icon(Icons.location_city),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Por favor, insira o bairro';
+                          return 'Por favor, insira o endereço';
                         }
                         return null;
                       },
@@ -347,6 +364,137 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                         }
                         if (!_telefoneFormatter.isFill()) {
                           return 'Insira um telefone válido';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    // Campo de seleção de feiras
+                    GestureDetector(
+                      onTap: _selectFeiras,
+                      child: AbsorbPointer(
+                        child: TextField(
+                          decoration: InputDecoration(
+                            labelText: 'Feiras em que atua',
+                            prefixIcon: const Icon(Icons.event),
+                            suffixIcon: const Icon(Icons.arrow_drop_down),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey[100],
+                          ),
+                          readOnly: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Exibir feiras selecionadas como chips
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children: _feirasSelecionadas.map((feira) {
+                        return Chip(
+                          label: Text(
+                            feira,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          backgroundColor: Colors.blue,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          deleteIcon: const Icon(Icons.close, size: 18, color: Colors.white),
+                          onDeleted: () {
+                            setState(() {
+                              _feirasSelecionadas.remove(feira);
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 24),
+                    // Campo de seleção de produtos
+                    GestureDetector(
+                      onTap: _selectProdutos,
+                      child: AbsorbPointer(
+                        child: TextField(
+                          decoration: InputDecoration(
+                            labelText: 'Produtos que comercializa',
+                            prefixIcon: const Icon(Icons.storefront),
+                            suffixIcon: const Icon(Icons.arrow_drop_down),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey[100],
+                          ),
+                          readOnly: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Exibir produtos selecionados como chips
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children: _produtosSelecionados.map((produto) {
+                        return Chip(
+                          label: Text(
+                            produto,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          backgroundColor: Colors.blue,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          deleteIcon: const Icon(Icons.close, size: 18, color: Colors.white),
+                          onDeleted: () {
+                            setState(() {
+                              _produtosSelecionados.remove(produto);
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 24),
+                    // Campo Quantidade de bancas
+                    TextFormField(
+                      controller: _quantidadeBancasController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      decoration: InputDecoration(
+                        labelText: 'Quantidade de bancas',
+                        prefixIcon: const Icon(Icons.table_chart),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Por favor, insira a quantidade de bancas';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    // Campo Local da Coleta
+                    TextFormField(
+                      controller: _localColetaController,
+                      keyboardType: TextInputType.text,
+                      decoration: InputDecoration(
+                        labelText: 'Local da Coleta',
+                        prefixIcon: const Icon(Icons.add_business),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Por favor, insira o local da coleta';
                         }
                         return null;
                       },
