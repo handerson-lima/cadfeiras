@@ -1,0 +1,31 @@
+name: Deploy Flutter Web to VPS
+
+on:
+  push:
+    branches:
+      - main  # altere para a branch que você usa, se for diferente
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'  # ou a versão que você está usando
+
+      - name: Build Flutter Web
+        run: flutter build web
+
+      - name: Enviar para VPS via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_KEY }}
+          source: "build/web/*"
+          target: "/home/root/web"  # ajuste para a pasta certa na sua VPS
