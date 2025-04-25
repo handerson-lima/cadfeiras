@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
-
+import '../../Model/feirante.dart';
 import 'Components/feiras_selection.dart';
 import 'Components/produtos_selection.dart';
 
@@ -13,7 +13,6 @@ class FeiranteCadastroScreen extends StatefulWidget {
   @override
   _FeiranteCadastroScreenState createState() => _FeiranteCadastroScreenState();
 }
-
 
 class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
   final _formKey = GlobalKey<FormState>();
@@ -101,22 +100,41 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
+      // Criar instância de Feirante com os dados coletados
+      final feirante = Feirante(
+        nome: _nomeController.text,
+        cpf: _cpfController.text,
+        telefone: _telefoneController.text,
+        cidade: _cidadeController.text,
+        foto: _imagemSelecionada,
+        endereco: _enderecoController.text,
+        complemento: _complementoController.text.isEmpty ? null : _complementoController.text,
+        dependentesSelecao: _dependentesSelecao,
+        dependentesQuantidade: _dependentesSelecao == 'Sim' && _dependentesQuantidadeController.text.isNotEmpty
+            ? int.parse(_dependentesQuantidadeController.text)
+            : null,
+        feirasSelecionadas: _feirasSelecionadas,
+        produtosSelecionados: _produtosSelecionados,
+        quantidadeBancas: int.parse(_quantidadeBancasController.text),
+        localColeta: _localColetaController.text,
+      );
+
       // Simular ação de cadastro (pode integrar com backend)
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             'Cadastro de feirante bem-sucedido!\n'
-                'Nome: ${_nomeController.text}\n'
-                'CPF: ${_cpfController.text}\n'
-                'Endereço: ${_enderecoController.text}\n'
-                'Complemento: ${_complementoController.text.isEmpty ? "Não informado" : _complementoController.text}\n'
-                'Cidade: ${_cidadeController.text}\n'
-                'Dependentes: ${_dependentesSelecao ?? "Não informado"}${_dependentesSelecao == "Sim" ? " (Quantidade: ${_dependentesQuantidadeController.text})" : ""}\n'
-                'Telefone: ${_telefoneController.text}\n'
-                'Feiras em que atua: ${_feirasSelecionadas.isEmpty ? "Nenhuma" : _feirasSelecionadas.join(", ")}\n'
-                'Produtos que comercializa: ${_produtosSelecionados.isEmpty ? "Nenhum" : _produtosSelecionados.join(", ")}\n'
-                'Quantidade de bancas: ${_quantidadeBancasController.text.isEmpty ? "Não informado" : _quantidadeBancasController.text}\n'
-                'Local da coleta: ${_localColetaController.text.isEmpty ? "Não informado" : _localColetaController.text}',
+                'Nome: ${feirante.nome}\n'
+                'CPF: ${feirante.cpf}\n'
+                'Endereço: ${feirante.endereco}\n'
+                'Complemento: ${feirante.complemento ?? "Não informado"}\n'
+                'Cidade: ${feirante.cidade}\n'
+                'Dependentes: ${feirante.dependentesSelecao ?? "Não informado"}${feirante.dependentesSelecao == "Sim" ? " (Quantidade: ${feirante.dependentesQuantidade})" : ""}\n'
+                'Telefone: ${feirante.telefone}\n'
+                'Feiras em que atua: ${feirante.feirasSelecionadas.isEmpty ? "Nenhuma" : feirante.feirasSelecionadas.join(", ")}\n'
+                'Produtos que comercializa: ${feirante.produtosSelecionados.isEmpty ? "Nenhum" : feirante.produtosSelecionados.join(", ")}\n'
+                'Quantidade de bancas: ${feirante.quantidadeBancas}\n'
+                'Local da coleta: ${feirante.localColeta}',
           ),
         ),
       );
@@ -130,14 +148,14 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Cadastro de Feirantes',
+          'CADASTRO DE FEIRANTES',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: Colors.blue,
           ),
         ),
-        backgroundColor: Colors.blueGrey,
+        backgroundColor: Colors.grey,
         automaticallyImplyLeading: false, // Remove o botão de voltar
       ),
       body: Center(
