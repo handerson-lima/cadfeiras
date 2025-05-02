@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
 class AgenteService {
@@ -70,7 +71,7 @@ class AgenteService {
 
     final body = {
       "filter": {
-        "matricula": { "\$equals": int.tryParse(matricula) ?? 0 }
+        "matricula": int.tryParse(matricula) ?? 0  // ✅ Filtro direto, sem operadores
       },
       "columns": ["id", "nome", "matricula", "funcao", "senha_hash", "ativo"]
     };
@@ -90,7 +91,9 @@ class AgenteService {
       if (decoded['records'] != null && decoded['records'].isNotEmpty) {
         final agente = decoded['records'][0];
 
-        if (agente['senha_hash'] == senha && agente['ativo'] == true) {
+        final senhaHash = sha256.convert(utf8.encode(senha)).toString();
+
+        if (agente['senha_hash'] == senhaHash && agente['ativo'] == true) {
           print('✅ Login bem-sucedido para ${agente['nome']}');
           return agente;
         } else {
@@ -105,6 +108,8 @@ class AgenteService {
 
     return null;
   }
+
+
 
   Future<bool> createAgente(Map<String, dynamic> data) async {
     try {

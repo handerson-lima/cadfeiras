@@ -152,7 +152,7 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: Colors.blue,
+            color: Colors.white,
           ),
         ),
         backgroundColor: Colors.grey,
