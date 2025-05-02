@@ -1,7 +1,9 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
-
+import '../../Model/agente.dart';
+import '../../services/agente_service.dart';
 import '../cadastro feirantes/feirante_cadastro.dart';
-
 
 class CadastroScreen extends StatefulWidget {
   const CadastroScreen({super.key});
@@ -19,6 +21,8 @@ class _CadastroScreenState extends State<CadastroScreen> {
   final _confirmaSenhaController = TextEditingController();
   bool _obscureSenha = true;
   bool _obscureConfirmaSenha = true;
+
+  final AgenteService _agenteService = AgenteService();
 
   @override
   void dispose() {
@@ -42,17 +46,35 @@ class _CadastroScreenState extends State<CadastroScreen> {
     });
   }
 
-  void _submit() {
+  void _submit() async {
     if (_formKey.currentState!.validate()) {
-      // Simular ação de cadastro (pode integrar com backend)
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cadastro bem-sucedido!')),
+      final senha = _senhaController.text;
+      final senhaHash = sha256.convert(utf8.encode(senha)).toString();
+
+      final agente = Agente(
+        nome: _nomeController.text.trim(),
+        matricula: int.parse(_matriculaController.text.trim()),
+        funcao: _funcaoController.text.trim(),
+        senhaHash: senhaHash,
+        ativo: true,
+        criadoEm: DateTime.now(),
       );
-      // Navegar para a tela de cadastro de feirantes
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const FeiranteCadastroScreen()),
-      );
+
+      final sucesso = await _agenteService.createAgente(agente.toJson());
+
+      if (sucesso) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cadastro bem-sucedido!')),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const FeiranteCadastroScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ao cadastrar o agente.')),
+        );
+      }
     }
   }
 
@@ -65,7 +87,6 @@ class _CadastroScreenState extends State<CadastroScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logomarca
               Image.asset(
                 'assets/logo.png',
                 height: 150,
@@ -76,7 +97,6 @@ class _CadastroScreenState extends State<CadastroScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              // Título
               const Text(
                 'CADASTRO DE FEIRANTES',
                 style: TextStyle(
@@ -86,12 +106,10 @@ class _CadastroScreenState extends State<CadastroScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              // Formulário
               Form(
                 key: _formKey,
                 child: Column(
                   children: [
-                    // Campo Nome
                     TextFormField(
                       controller: _nomeController,
                       decoration: InputDecoration(
@@ -103,17 +121,13 @@ class _CadastroScreenState extends State<CadastroScreen> {
                         filled: true,
                         fillColor: Colors.grey[100],
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Por favor, insira seu nome';
-                        }
-                        return null;
-                      },
+                      validator: (value) =>
+                      value == null || value.isEmpty ? 'Por favor, insira seu nome' : null,
                     ),
                     const SizedBox(height: 16),
-                    // Campo Matrícula
                     TextFormField(
                       controller: _matriculaController,
+                      keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         labelText: 'Matrícula',
                         prefixIcon: const Icon(Icons.account_circle_outlined),
@@ -127,11 +141,13 @@ class _CadastroScreenState extends State<CadastroScreen> {
                         if (value == null || value.isEmpty) {
                           return 'Por favor, insira sua matrícula';
                         }
+                        if (int.tryParse(value) == null) {
+                          return 'A matrícula deve ser um número válido';
+                        }
                         return null;
                       },
                     ),
                     const SizedBox(height: 16),
-                    // Campo Função
                     TextFormField(
                       controller: _funcaoController,
                       decoration: InputDecoration(
@@ -143,15 +159,10 @@ class _CadastroScreenState extends State<CadastroScreen> {
                         filled: true,
                         fillColor: Colors.grey[100],
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Por favor, insira sua função';
-                        }
-                        return null;
-                      },
+                      validator: (value) =>
+                      value == null || value.isEmpty ? 'Por favor, insira sua função' : null,
                     ),
                     const SizedBox(height: 16),
-                    // Campo Senha
                     TextFormField(
                       controller: _senhaController,
                       obscureText: _obscureSenha,
@@ -160,9 +171,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
                         prefixIcon: const Icon(Icons.lock),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscureSenha
-                                ? Icons.visibility
-                                : Icons.visibility_off,
+                            _obscureSenha ? Icons.visibility : Icons.visibility_off,
                           ),
                           onPressed: _toggleSenhaVisibility,
                         ),
@@ -183,7 +192,6 @@ class _CadastroScreenState extends State<CadastroScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    // Campo Confirma Senha
                     TextFormField(
                       controller: _confirmaSenhaController,
                       obscureText: _obscureConfirmaSenha,
@@ -192,9 +200,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
                         prefixIcon: const Icon(Icons.lock),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscureConfirmaSenha
-                                ? Icons.visibility
-                                : Icons.visibility_off,
+                            _obscureConfirmaSenha ? Icons.visibility : Icons.visibility_off,
                           ),
                           onPressed: _toggleConfirmaSenhaVisibility,
                         ),
@@ -218,7 +224,6 @@ class _CadastroScreenState extends State<CadastroScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              // Botão Cadastrar
               ElevatedButton(
                 onPressed: _submit,
                 style: ElevatedButton.styleFrom(
@@ -230,7 +235,6 @@ class _CadastroScreenState extends State<CadastroScreen> {
                 child: const Text('Cadastrar'),
               ),
               const SizedBox(height: 16),
-              // Botão Voltar
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);

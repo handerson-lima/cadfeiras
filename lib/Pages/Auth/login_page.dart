@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 import '../homepage/homepage.dart';
 import 'cad_user.dart';
-
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _matriculaController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -30,17 +32,51 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
-      // Simular ação de login (pode integrar com backend)
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login bem-sucedido!')),
-      );
-      // Navegar para a homepage
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        final response = await http.post(
+          Uri.parse('https://cadfeiras.h2solucoes.top/api/auth/login'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'matricula': _matriculaController.text,
+            'password': _passwordController.text,
+          }),
+        );
+
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          // Aqui você pode salvar o token JWT (por exemplo, usando shared_preferences)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Login bem-sucedido! Bem-vindo, ${_matriculaController.text}')),
+          );
+          // Navegar para a homepage
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        } else {
+          final error = jsonDecode(response.body)['message'] ?? 'Erro ao fazer login';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(error)),
+          );
+        }
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro de conexão com o servidor')),
+        );
+      }
     }
   }
 
@@ -135,7 +171,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 40),
               // Botão Entrar
-              ElevatedButton(
+              _isLoading
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton(
                 onPressed: _submit,
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(200, 50),
