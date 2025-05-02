@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 class Feirante {
@@ -26,8 +27,23 @@ class Feirante {
     this.feirasSelecionadas = const {},
     this.produtosSelecionados = const {},
     required this.quantidadeBancas,
-    required this.localColeta, String? dependentesSelecao,
+    required this.localColeta,
   });
 
-  get dependentesSelecao => null;
+  Map<String, dynamic> toJson() {
+    return {
+      "nome": nome,
+      "cpf": cpf,
+      "telefone": telefone,
+      "cidade": cidade,
+      "endereco": endereco,
+      "complemento": complemento,
+      "dependentes_quantidade": dependentesQuantidade,
+      "feiras": feirasSelecionadas.toList(),
+      "produtos": produtosSelecionados.toList(),
+      "quantidade_bancas": quantidadeBancas,
+      "local_coleta": localColeta,
+      "foto": foto != null ? base64Encode(foto!) : null,
+    };
+  }
 }

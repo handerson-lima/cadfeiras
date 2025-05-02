@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../Model/feirante.dart';
+import '../../services/feirante_service.dart';
 import 'feirante_info.dart';
 
 class FeirantesCadastradosScreen extends StatefulWidget {
@@ -10,45 +12,55 @@ class FeirantesCadastradosScreen extends StatefulWidget {
 }
 
 class _FeirantesCadastradosScreenState extends State<FeirantesCadastradosScreen> {
-  final List<Feirante> _feirantes = [
-    Feirante(
-      nome: "Ana Silva",
-      cpf: "123.456.789-00",
-      telefone: "(84) 98765-4321",
-      cidade: "Natal",
-      endereco: "Rua das Flores, 123",
-      complemento: "Apto 101",
-      dependentesSelecao: "Sim",
-      dependentesQuantidade: 2,
-      feirasSelecionadas: {"ALECRIM (LESTE)", "PAJUÇARA (NORTE)"},
-      produtosSelecionados: {"HORTIFRUTI", "QUEIJOS"},
-      quantidadeBancas: 3,
-      localColeta: "Mercado Central",
-    ),
-    Feirante(
-      nome: "João Oliveira",
-      cpf: "987.654.321-00",
-      telefone: "(84) 91234-5678",
-      cidade: "Parnamirim",
-      endereco: "Av. Principal, 456",
-      complemento: null,
-      dependentesSelecao: "Não",
-      dependentesQuantidade: null,
-      feirasSelecionadas: {"CIDADE ALTA (CENTRO)"},
-      produtosSelecionados: {"CARNES"},
-      quantidadeBancas: 1,
-      localColeta: "Feira Livre",
-    ),
-  ];
-
+  List<Feirante> _feirantes = [];
   List<Feirante> _filteredFeirantes = [];
   final TextEditingController _searchController = TextEditingController();
+  final FeiranteService _feiranteService = FeiranteService();
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _filteredFeirantes = _feirantes; // Inicialmente, exibe todos os feirantes
+    _fetchFeirantes();
     _searchController.addListener(_filterFeirantes);
+  }
+
+  Future<void> _fetchFeirantes() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final records = await _feiranteService.fetchFeirantes();
+      setState(() {
+        _feirantes = records.map((record) {
+          return Feirante(
+            nome: record['nome'] ?? '',
+            cpf: record['cpf'] ?? '',
+            telefone: record['telefone'] ?? '',
+            cidade: record['cidade'] ?? '',
+            foto: record['foto'] != null ? base64Decode(record['foto']) : null,
+            endereco: record['endereco'] ?? '',
+            complemento: record['complemento'],
+            dependentesQuantidade: record['dependentes_quantidade'] as int?,
+            feirasSelecionadas: (record['feiras'] as List<dynamic>?)?.map((e) => e.toString()).toSet() ?? {},
+            produtosSelecionados: (record['produtos'] as List<dynamic>?)?.map((e) => e.toString()).toSet() ?? {},
+            quantidadeBancas: record['quantidade_bancas'] as int? ?? 0,
+            localColeta: record['local_coleta'] ?? '',
+          );
+        }).toList();
+        _filteredFeirantes = _feirantes;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Erro ao carregar feirantes: $e';
+        print('Erro detalhado: $e');
+        _isLoading = false;
+      });
+    }
   }
 
   void _filterFeirantes() {
@@ -81,11 +93,10 @@ class _FeirantesCadastradosScreenState extends State<FeirantesCadastradosScreen>
       ),
       body: Column(
         children: [
-          // Barra de pesquisa com bordas arredondadas e efeito flutuante
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Card(
-              elevation: 4, // Efeito flutuante
+              elevation: 4,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -105,9 +116,14 @@ class _FeirantesCadastradosScreenState extends State<FeirantesCadastradosScreen>
               ),
             ),
           ),
-          // Lista de feirantes
           Expanded(
-            child: ListView.builder(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _errorMessage != null
+                ? Center(child: Text(_errorMessage!))
+                : _filteredFeirantes.isEmpty
+                ? const Center(child: Text('Nenhum feirante encontrado.'))
+                : ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               itemCount: _filteredFeirantes.length,
               itemBuilder: (context, index) {
@@ -129,7 +145,8 @@ class _FeirantesCadastradosScreenState extends State<FeirantesCadastradosScreen>
                           width: 50,
                           height: 50,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => const Icon(
+                          errorBuilder: (context, error, stackTrace) =>
+                          const Icon(
                             Icons.person,
                             size: 30,
                             color: Colors.grey,

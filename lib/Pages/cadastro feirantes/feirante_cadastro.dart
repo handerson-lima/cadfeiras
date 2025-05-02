@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import '../../Model/feirante.dart';
+import '../../services/feirante_service.dart';
 import 'Components/feiras_selection.dart';
 import 'Components/produtos_selection.dart';
 
@@ -29,6 +30,7 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
   Uint8List? _imagemSelecionada;
   final Set<String> _feirasSelecionadas = {};
   final Set<String> _produtosSelecionados = {};
+  final FeiranteService _feiranteService = FeiranteService();
 
   final _cpfFormatter = MaskTextInputFormatter(
     mask: '###.###.###-##',
@@ -64,7 +66,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
     }
   }
 
-  // Abrir o diálogo de seleção de feiras
   Future<void> _selectFeiras() async {
     final selectedFeiras = await showDialog<Set<String>>(
       context: context,
@@ -81,7 +82,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
     }
   }
 
-  // Abrir o diálogo de seleção de produtos
   Future<void> _selectProdutos() async {
     final selectedProdutos = await showDialog<Set<String>>(
       context: context,
@@ -98,7 +98,7 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
     }
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
       // Criar instância de Feirante com os dados coletados
       final feirante = Feirante(
@@ -106,10 +106,9 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
         cpf: _cpfController.text,
         telefone: _telefoneController.text,
         cidade: _cidadeController.text,
-        foto: _imagemSelecionada,
+        foto: _imagemSelecionada, // Se _imagemSelecionada for null, o toJson() tratará como null; caso contrário, será codificado em base64
         endereco: _enderecoController.text,
         complemento: _complementoController.text.isEmpty ? null : _complementoController.text,
-        dependentesSelecao: _dependentesSelecao,
         dependentesQuantidade: _dependentesSelecao == 'Sim' && _dependentesQuantidadeController.text.isNotEmpty
             ? int.parse(_dependentesQuantidadeController.text)
             : null,
@@ -119,27 +118,33 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
         localColeta: _localColetaController.text,
       );
 
-      // Simular ação de cadastro (pode integrar com backend)
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Cadastro de feirante bem-sucedido!\n'
-                'Nome: ${feirante.nome}\n'
-                'CPF: ${feirante.cpf}\n'
-                'Endereço: ${feirante.endereco}\n'
-                'Complemento: ${feirante.complemento ?? "Não informado"}\n'
-                'Cidade: ${feirante.cidade}\n'
-                'Dependentes: ${feirante.dependentesSelecao ?? "Não informado"}${feirante.dependentesSelecao == "Sim" ? " (Quantidade: ${feirante.dependentesQuantidade})" : ""}\n'
-                'Telefone: ${feirante.telefone}\n'
-                'Feiras em que atua: ${feirante.feirasSelecionadas.isEmpty ? "Nenhuma" : feirante.feirasSelecionadas.join(", ")}\n'
-                'Produtos que comercializa: ${feirante.produtosSelecionados.isEmpty ? "Nenhum" : feirante.produtosSelecionados.join(", ")}\n'
-                'Quantidade de bancas: ${feirante.quantidadeBancas}\n'
-                'Local da coleta: ${feirante.localColeta}',
+      final success = await _feiranteService.createFeirante(feirante.toJson());
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Cadastro de feirante bem-sucedido!\n'
+                  'Nome: ${feirante.nome}\n'
+                  'CPF: ${feirante.cpf}\n'
+                  'Endereço: ${feirante.endereco}\n'
+                  'Complemento: ${feirante.complemento ?? "Não informado"}\n'
+                  'Cidade: ${feirante.cidade}\n'
+                  'Dependentes: ${_dependentesSelecao ?? "Não informado"}${_dependentesSelecao == "Sim" ? " (Quantidade: ${feirante.dependentesQuantidade})" : ""}\n'
+                  'Telefone: ${feirante.telefone}\n'
+                  'Feiras em que atua: ${feirante.feirasSelecionadas.isEmpty ? "Nenhuma" : feirante.feirasSelecionadas.join(", ")}\n'
+                  'Produtos que comercializa: ${feirante.produtosSelecionados.isEmpty ? "Nenhum" : feirante.produtosSelecionados.join(", ")}\n'
+                  'Quantidade de bancas: ${feirante.quantidadeBancas}\n'
+                  'Local da coleta: ${feirante.localColeta}',
+            ),
           ),
-        ),
-      );
-      // Voltar para a tela de login
-      Navigator.popUntil(context, (route) => route.isFirst);
+        );
+        Navigator.popUntil(context, (route) => route.isFirst);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ao cadastrar feirante. Tente novamente.')),
+        );
+      }
     }
   }
 
@@ -156,7 +161,7 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
           ),
         ),
         backgroundColor: Colors.grey,
-        automaticallyImplyLeading: false, // Remove o botão de voltar
+        automaticallyImplyLeading: false,
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -164,7 +169,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logomarca
               Image.asset(
                 'assets/logo.png',
                 height: 150,
@@ -175,12 +179,10 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              // Formulário
               Form(
                 key: _formKey,
                 child: Column(
                   children: [
-                    // Campo Foto
                     GestureDetector(
                       onTap: _pickImage,
                       child: Container(
@@ -199,7 +201,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // Campo Nome
                     TextFormField(
                       controller: _nomeController,
                       decoration: InputDecoration(
@@ -219,7 +220,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    // Campo CPF
                     TextFormField(
                       controller: _cpfController,
                       inputFormatters: [_cpfFormatter],
@@ -244,7 +244,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    // Campo Endereço
                     TextFormField(
                       controller: _enderecoController,
                       decoration: InputDecoration(
@@ -264,7 +263,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    // Campo Complemento
                     TextFormField(
                       controller: _complementoController,
                       decoration: InputDecoration(
@@ -278,7 +276,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // Campo Cidade
                     TextFormField(
                       controller: _cidadeController,
                       decoration: InputDecoration(
@@ -298,7 +295,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    // Campo Dependentes
                     Row(
                       children: [
                         Expanded(
@@ -362,7 +358,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    // Campo Telefone
                     TextFormField(
                       controller: _telefoneController,
                       inputFormatters: [_telefoneFormatter],
@@ -387,7 +382,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       },
                     ),
                     const SizedBox(height: 24),
-                    // Campo de seleção de feiras
                     GestureDetector(
                       onTap: _selectFeiras,
                       child: AbsorbPointer(
@@ -407,7 +401,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // Exibir feiras selecionadas como chips
                     Wrap(
                       spacing: 8.0,
                       runSpacing: 8.0,
@@ -431,7 +424,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       }).toList(),
                     ),
                     const SizedBox(height: 24),
-                    // Campo de seleção de produtos
                     GestureDetector(
                       onTap: _selectProdutos,
                       child: AbsorbPointer(
@@ -451,7 +443,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // Exibir produtos selecionados como chips
                     Wrap(
                       spacing: 8.0,
                       runSpacing: 8.0,
@@ -475,7 +466,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       }).toList(),
                     ),
                     const SizedBox(height: 24),
-                    // Campo Quantidade de bancas
                     TextFormField(
                       controller: _quantidadeBancasController,
                       keyboardType: TextInputType.number,
@@ -497,7 +487,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                       },
                     ),
                     const SizedBox(height: 24),
-                    // Campo Local da Coleta
                     TextFormField(
                       controller: _localColetaController,
                       keyboardType: TextInputType.text,
@@ -521,7 +510,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              // Botão Cadastrar
               ElevatedButton(
                 onPressed: _submit,
                 style: ElevatedButton.styleFrom(
@@ -533,7 +521,6 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
                 child: const Text('Cadastrar'),
               ),
               const SizedBox(height: 16),
-              // Botão Voltar
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);
