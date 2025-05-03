@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../Model/feirante.dart';
 import '../cadastro feirantes/Components/feiras_selection.dart';
 import '../cadastro feirantes/Components/produtos_selection.dart';
+import '../../services/feirante_service.dart';
 
 class FeiranteInfoScreen extends StatefulWidget {
   final Feirante feirante;
@@ -18,34 +19,60 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
   late Set<String> _produtosSelecionados;
   late TextEditingController _quantidadeBancasController;
   late TextEditingController _localColetaController;
+  final FeiranteService _feiranteService = FeiranteService();
 
   @override
   void initState() {
     super.initState();
-    // Inicializar com os valores do feirante
     _feirasSelecionadas = Set.from(widget.feirante.feirasSelecionadas);
     _produtosSelecionados = Set.from(widget.feirante.produtosSelecionados);
     _quantidadeBancasController = TextEditingController(text: widget.feirante.quantidadeBancas.toString());
     _localColetaController = TextEditingController(text: widget.feirante.localColeta);
   }
 
-  void _submit() {
-    // Simular salvamento das feiras, produtos, quantidade de bancas e local de coleta
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Informações atualizadas para ${widget.feirante.nome}:\n'
-              'Feiras em que atua: ${_feirasSelecionadas.isEmpty ? "Nenhuma" : _feirasSelecionadas.join(", ")}\n'
-              'Produtos que comercializa: ${_produtosSelecionados.isEmpty ? "Nenhum" : _produtosSelecionados.join(", ")}\n'
-              'Quantidade de bancas: ${_quantidadeBancasController.text.isEmpty ? "Não informado" : _quantidadeBancasController.text}\n'
-              'Local da coleta: ${_localColetaController.text.isEmpty ? "Não informado" : _localColetaController.text}',
-        ),
-      ),
+  Future<void> _submit() async {
+    final updatedFeirante = Feirante(
+      cpf: widget.feirante.cpf,
+      nome: widget.feirante.nome,
+      telefone: widget.feirante.telefone,
+      cidade: widget.feirante.cidade,
+      foto: widget.feirante.foto,
+      endereco: widget.feirante.endereco,
+      complemento: widget.feirante.complemento,
+      dependentesQuantidade: widget.feirante.dependentesQuantidade,
+      feirasSelecionadas: _feirasSelecionadas,
+      produtosSelecionados: _produtosSelecionados,
+      quantidadeBancas: int.tryParse(_quantidadeBancasController.text) ?? widget.feirante.quantidadeBancas,
+      localColeta: _localColetaController.text,
     );
-    Navigator.pop(context);
+
+    try {
+      final success = await _feiranteService.updateFeirante(widget.feirante.cpf, updatedFeirante.toJson());
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Informações atualizadas para ${widget.feirante.nome}:\n'
+                  'Feiras em que atua: ${_feirasSelecionadas.isEmpty ? "Nenhuma" : _feirasSelecionadas.join(", ")}\n'
+                  'Produtos que comercializa: ${_produtosSelecionados.isEmpty ? "Nenhum" : _produtosSelecionados.join(", ")}\n'
+                  'Quantidade de bancas: ${_quantidadeBancasController.text.isEmpty ? "Não informado" : _quantidadeBancasController.text}\n'
+                  'Local da coleta: ${_localColetaController.text.isEmpty ? "Não informado" : _localColetaController.text}',
+            ),
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ao atualizar feirante. Tente novamente.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao atualizar feirante: $e')),
+      );
+    }
   }
 
-  // Abrir o diálogo de seleção de feiras
   Future<void> _selectFeiras() async {
     final selectedFeiras = await showDialog<Set<String>>(
       context: context,
@@ -62,7 +89,6 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
     }
   }
 
-  // Abrir o diálogo de seleção de produtos
   Future<void> _selectProdutos() async {
     final selectedProdutos = await showDialog<Set<String>>(
       context: context,
@@ -95,7 +121,6 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logomarca
               Image.asset(
                 'assets/logo.png',
                 height: 150,
@@ -106,7 +131,6 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              // Título
               Text(
                 'INFORMAÇÕES DE ${widget.feirante.nome.toUpperCase()}',
                 style: const TextStyle(
@@ -116,7 +140,6 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              // Campo de seleção de feiras
               GestureDetector(
                 onTap: _selectFeiras,
                 child: AbsorbPointer(
@@ -135,7 +158,6 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Exibir feiras selecionadas como chips
               Wrap(
                 spacing: 8.0,
                 runSpacing: 8.0,
@@ -159,7 +181,6 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
                 }).toList(),
               ),
               const SizedBox(height: 24),
-              // Campo de seleção de produtos
               GestureDetector(
                 onTap: _selectProdutos,
                 child: AbsorbPointer(
@@ -178,7 +199,6 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Exibir produtos selecionados como chips
               Wrap(
                 spacing: 8.0,
                 runSpacing: 8.0,
@@ -202,7 +222,6 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
                 }).toList(),
               ),
               const SizedBox(height: 24),
-              // Campo Quantidade de bancas
               TextField(
                 controller: _quantidadeBancasController,
                 keyboardType: TextInputType.number,
@@ -217,7 +236,6 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              // Campo Local da Coleta
               TextField(
                 controller: _localColetaController,
                 keyboardType: TextInputType.text,
@@ -230,7 +248,6 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
                   fillColor: Colors.grey[100],
                 ),
               ),
-              // Botão Salvar
               const SizedBox(height: 40),
               ElevatedButton(
                 onPressed: _submit,
@@ -243,7 +260,6 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
                 child: const Text('Salvar'),
               ),
               const SizedBox(height: 16),
-              // Botão Voltar
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);
