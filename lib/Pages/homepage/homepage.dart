@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../Auth/login_page.dart';
+import '../Dashboard/dashboard.dart';
 import '../cadastro feirantes/feirante_cadastro.dart';
 import '../feirantes/feirantes_page.dart';
 
@@ -15,6 +16,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Lista de widgets que serão exibidos na área de conteúdo
   final List<Widget> _screens = [
+    DashboardScreen(),
     const FeiranteCadastroScreen(),
     const FeirantesCadastradosScreen(),
   ];
@@ -73,18 +75,25 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ListView(
             children: [
               ListTile(
-                leading: const Icon(Icons.person_add),
-                title: const Text('Novo Cadastro'),
+                leading: const Icon(Icons.dashboard),
+                title: const Text('Dashboard'),
                 selected: _selectedIndex == 0,
                 selectedTileColor: Colors.blue.withOpacity(0.1),
                 onTap: () => _onItemTapped(0),
               ),
               ListTile(
-                leading: const Icon(Icons.people),
-                title: const Text('Feirantes Cadastrados'),
+                leading: const Icon(Icons.person_add),
+                title: const Text('Novo Cadastro'),
                 selected: _selectedIndex == 1,
                 selectedTileColor: Colors.blue.withOpacity(0.1),
                 onTap: () => _onItemTapped(1),
+              ),
+              ListTile(
+                leading: const Icon(Icons.people),
+                title: const Text('Feirantes Cadastrados'),
+                selected: _selectedIndex == 2,
+                selectedTileColor: Colors.blue.withOpacity(0.1),
+                onTap: () => _onItemTapped(2),
               ),
             ],
           ),
@@ -101,18 +110,25 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ListView(
                 children: [
                   ListTile(
-                    leading: const Icon(Icons.person_add),
-                    title: const Text('Novo Cadastro'),
+                    leading: const Icon(Icons.dashboard),
+                    title: const Text('Dashboard'),
                     selected: _selectedIndex == 0,
                     selectedTileColor: Colors.blue.withOpacity(0.1),
                     onTap: () => _onItemTapped(0),
                   ),
                   ListTile(
-                    leading: const Icon(Icons.people),
-                    title: const Text('Feirantes Cadastrados'),
+                    leading: const Icon(Icons.person_add),
+                    title: const Text('Novo Cadastro'),
                     selected: _selectedIndex == 1,
                     selectedTileColor: Colors.blue.withOpacity(0.1),
                     onTap: () => _onItemTapped(1),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.people),
+                    title: const Text('Feirantes Cadastrados'),
+                    selected: _selectedIndex == 2,
+                    selectedTileColor: Colors.blue.withOpacity(0.1),
+                    onTap: () => _onItemTapped(2),
                   ),
                 ],
               ),
