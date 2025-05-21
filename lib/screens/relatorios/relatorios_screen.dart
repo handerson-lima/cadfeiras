@@ -1,18 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Para formatar datas
-import 'package:path_provider/path_provider.dart'; // Para salvar arquivos
-import 'package:permission_handler/permission_handler.dart'; // Para gerenciar permissões
-import 'dart:io'; // Para operações de arquivo
 import 'package:csv/csv.dart'; // Para gerar CSV
+import 'dart:io' show File, Platform; // Para verificar a plataforma (não funciona no web, mas útil para diferenciar)
+import 'package:flutter/foundation.dart' show kIsWeb; // Para verificar se é web
+
+// Condicionalmente importar pacotes específicos de plataforma
+import 'package:path_provider/path_provider.dart' // Para salvar arquivos em mobile
+if (dart.library.html) 'package:flutter_web_plugins/flutter_web_plugins.dart' as web_plugins; // Placeholder para web
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart' // Para gerenciar permissões em mobile
+if (dart.library.html) 'package:flutter_web_plugins/flutter_web_plugins.dart' as web_plugins; // Placeholder para web
+import 'package:permission_handler/permission_handler.dart';
+
+
+// Para a web, precisamos de 'dart:html' para downloads.
+// Usamos um import condicional para evitar erros de compilação em outras plataformas.
+import 'dart:html' as html; // Usado apenas para web
 
 import '../../Model/feirante.dart';
-import '../../Pages/Dashboard/dashboard.dart';
+import '../../Pages/Dashboard/dashboard.dart'; // Removido se não for usado explicitamente
 import '../../Pages/cadastro feirantes/Components/feiras_selection.dart';
 import '../../Pages/cadastro feirantes/Components/produtos_selection.dart';
 import '../../services/feirante_service.dart';
-import '../feirante_cadastro/Components/feiras_selection.dart';
-import '../feirante_cadastro/Components/produtos_selection.dart';
-import '../dashboard/dashboard_screen.dart'; // Para o botão de voltar
+import '../dashboard/dashboard_screen.dart';
 
 class RelatoriosScreen extends StatefulWidget {
   const RelatoriosScreen({super.key});
@@ -31,12 +41,21 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
   DateTime? _dataCadastroFim;
   final Set<String> _feirasFiltro = {};
   final Set<String> _produtosFiltro = {};
-  String? _cidadeFiltroController; // Use String? para a cidade
+  String? _cidadeFiltroController;
+  TextEditingController _minBancasController = TextEditingController();
+  TextEditingController _maxBancasController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _fetchFeirantes(); // Carrega todos os feirantes inicialmente
+    _fetchFeirantes();
+  }
+
+  @override
+  void dispose() {
+    _minBancasController.dispose();
+    _maxBancasController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchFeirantes() async {
@@ -52,6 +71,9 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao carregar feirantes: $e')),
       );
+      setState(() {
+        _feirantesFiltrados = [];
+      });
     } finally {
       setState(() {
         _isLoading = false;
@@ -64,8 +86,6 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
       _isLoading = true;
     });
     try {
-      // Implemente a lógica de filtragem aqui
-      // Por enquanto, vamos simular:
       List<Feirante> allFeirantes = await _feiranteService.getAllFeirantes();
 
       _feirantesFiltrados = allFeirantes.where((feirante) {
@@ -73,14 +93,15 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
 
         // Filtro por data de cadastro
         if (_dataCadastroInicio != null && feirante.dataCadastro != null) {
-          if (feirante.dataCadastro!.isBefore(_dataCadastroInicio!)) {
+          final feiranteDate = DateTime(feirante.dataCadastro!.year, feirante.dataCadastro!.month, feirante.dataCadastro!.day);
+          final startDate = DateTime(_dataCadastroInicio!.year, _dataCadastroInicio!.month, _dataCadastroInicio!.day);
+          final endDate = DateTime(_dataCadastroFim!.year, _dataCadastroFim!.month, _dataCadastroFim!.day);
+
+          if (feiranteDate.isBefore(startDate) || feiranteDate.isAfter(endDate)) {
             matches = false;
           }
-        }
-        if (_dataCadastroFim != null && feirante.dataCadastro != null) {
-          if (feirante.dataCadastro!.isAfter(_dataCadastroFim!.add(const Duration(days: 1)))) { // Adiciona 1 dia para incluir o dia inteiro
-            matches = false;
-          }
+        } else if (_dataCadastroInicio != null && feirante.dataCadastro == null) {
+          matches = false;
         }
 
         // Filtro por feiras
@@ -114,6 +135,17 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
           }
         }
 
+        // Filtro: Quantidade de Bancas
+        final int? minBancas = int.tryParse(_minBancasController.text);
+        final int? maxBancas = int.tryParse(_maxBancasController.text);
+
+        if (minBancas != null && feirante.quantidadeBancas < minBancas) {
+          matches = false;
+        }
+        if (maxBancas != null && feirante.quantidadeBancas > maxBancas) {
+          matches = false;
+        }
+
         return matches;
       }).toList();
 
@@ -121,6 +153,9 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao aplicar filtros: $e')),
       );
+      setState(() {
+        _feirantesFiltrados = [];
+      });
     } finally {
       setState(() {
         _isLoading = false;
@@ -178,43 +213,35 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
     }
   }
 
-  Future<void> _exportToCsv() async {
-    if (_feirantesFiltrados.isEmpty) {
+  // Função genérica para gerar CSV a partir de uma lista de feirantes
+  // e lidar com o salvamento/download dependendo da plataforma
+  Future<void> _generateAndExportCsv(List<Feirante> feirantes, String filenamePrefix) async {
+    if (feirantes.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Nenhum dado para exportar.')),
       );
       return;
     }
 
-    // Solicitar permissão de armazenamento
-    var status = await Permission.storage.request();
-    if (!status.isGranted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Permissão de armazenamento negada.')),
-      );
-      return;
-    }
-
-    // Preparar os dados para CSV
     List<List<dynamic>> csvData = [];
     // Cabeçalho
     csvData.add([
       'Nome', 'CPF', 'Telefone', 'Cidade', 'Endereço', 'Complemento',
-      'Dependentes', 'Quantidade Dependentes', 'Feiras', 'Produtos',
+      'Dependentes (Sim/Não)', 'Quantidade Dependentes', 'Feiras', 'Produtos',
       'Quantidade Bancas', 'Local Coleta', 'Data Cadastro'
     ]);
 
     // Dados dos feirantes
-    for (var feirante in _feirantesFiltrados) {
+    for (var feirante in feirantes) {
       csvData.add([
         feirante.nome,
         feirante.cpf,
         feirante.telefone,
         feirante.cidade,
         feirante.endereco,
-        feirante.complemento ?? '', // Se for null, usa string vazia
-        feirante.dependentesQuantidade != null ? 'Sim' : 'Não',
-        feirante.dependentesQuantidade ?? '',
+        feirante.complemento ?? '',
+        feirante.dependentesQuantidade != null && feirante.dependentesQuantidade! > 0 ? 'Sim' : 'Não',
+        feirante.dependentesQuantidade ?? 0,
         feirante.feirasSelecionadas.join('; '),
         feirante.produtosSelecionados.join('; '),
         feirante.quantidadeBancas,
@@ -226,42 +253,93 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
     }
 
     String csvString = const ListToCsvConverter().convert(csvData);
+    final filename = '$filenamePrefix${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.csv';
 
-    try {
-      final directory = await getExternalStorageDirectory(); // Para Android
-      // Para iOS, você pode usar getApplicationDocumentsDirectory()
-      // ou pedir ao usuário onde salvar usando file_picker
+    if (kIsWeb) {
+      // Lógica para web
+      try {
+        final blob = html.Blob([csvString], 'text/csv');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.document.createElement('a') as html.AnchorElement
+          ..href = url
+          ..style.display = 'none'
+          ..download = filename;
+        html.document.body!.children.add(anchor);
+        anchor.click();
+        html.document.body!.children.remove(anchor);
+        html.Url.revokeObjectUrl(url);
 
-      if (directory == null) {
-        throw Exception("Não foi possível obter o diretório de armazenamento externo.");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Relatório CSV "$filename" gerado para download.')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao gerar arquivo CSV para download: $e')),
+        );
       }
+    } else {
+      // Lógica para mobile (Android/iOS)
+      try {
+        // Solicitar permissão de armazenamento
+        var status = await Permission.storage.request();
+        if (!status.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Permissão de armazenamento negada.')),
+          );
+          return;
+        }
 
-      final path = '${directory.path}/relatorio_feirantes_${DateTime.now().millisecondsSinceEpoch}.csv';
-      final file = File(path);
-      await file.writeAsString(csvString);
+        final directory = await getExternalStorageDirectory(); // Para Android
+        // Para iOS, você pode usar getApplicationDocumentsDirectory()
+        // ou pedir ao usuário onde salvar usando file_picker
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Relatório CSV salvo em: $path')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao salvar o arquivo CSV: $e')),
-      );
+        if (directory == null) {
+          throw Exception("Não foi possível obter o diretório de armazenamento externo.");
+        }
+
+        final path = '${directory.path}/$filename';
+        final file = File(path);
+        await file.writeAsString(csvString);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Relatório CSV salvo em: $path')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao salvar o arquivo CSV: $e')),
+        );
+      }
     }
   }
 
-  // NOTE: A implementação de exportação para PDF é mais complexa e
-  // geralmente requer uma biblioteca como 'pdf' ou 'syncfusion_flutter_pdf'.
-  // Por simplicidade, estou deixando o método, mas a implementação completa
-  // exigiria um foco maior apenas nele.
+  // Exportar apenas os feirantes filtrados (função já existente, agora usa a genérica)
+  Future<void> _exportFilteredToCsv() async {
+    await _generateAndExportCsv(_feirantesFiltrados, 'relatorio_feirantes_filtrado_');
+  }
+
+  // NOVA FUNÇÃO: Exportar todos os feirantes (sem filtro)
+  Future<void> _exportAllToCsv() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final allFeirantes = await _feiranteService.getAllFeirantes();
+      await _generateAndExportCsv(allFeirantes, 'relatorio_feirantes_todos_');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao exportar todos os feirantes: $e')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   Future<void> _exportToPdf() async {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Funcionalidade de exportar para PDF ainda não implementada.')),
     );
-    // Para implementar PDF, você precisaria de:
-    // 1. Um pacote como 'pdf' (para gerar o PDF)
-    // 2. Lógica para desenhar o conteúdo (tabela, texto) no PDF
-    // 3. Salvar o PDF de forma similar ao CSV
   }
 
   @override
@@ -277,7 +355,7 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
           ),
         ),
         backgroundColor: Colors.grey,
-        automaticallyImplyLeading: false, // Remove o botão de voltar padrão
+        automaticallyImplyLeading: false,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -317,6 +395,43 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
               onChanged: (value) {
                 _cidadeFiltroController = value.isEmpty ? null : value;
               },
+            ),
+            const SizedBox(height: 16),
+            // Filtro: Quantidade de Bancas
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _minBancasController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Bancas (Mín.)',
+                      prefixIcon: const Icon(Icons.table_chart),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextFormField(
+                    controller: _maxBancasController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Bancas (Máx.)',
+                      prefixIcon: const Icon(Icons.table_chart),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             // Filtro por Feiras
@@ -444,6 +559,7 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
                     subtitle: Text(
                       'CPF: ${feirante.cpf}\n'
                           'Cidade: ${feirante.cidade}\n'
+                          'Bancas: ${feirante.quantidadeBancas}\n'
                           'Feiras: ${feirante.feirasSelecionadas.isEmpty ? 'N/A' : feirante.feirasSelecionadas.join(', ')}',
                     ),
                     isThreeLine: true,
@@ -462,9 +578,9 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _exportToCsv,
+                    onPressed: _exportFilteredToCsv, // Exporta os filtrados
                     icon: const Icon(Icons.insert_drive_file),
-                    label: const Text('Exportar CSV'),
+                    label: const Text('Exportar Filtrados (CSV)'),
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(0, 50),
                       shape: RoundedRectangleBorder(
@@ -476,9 +592,9 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _exportToPdf, // Implementar futuramente
-                    icon: const Icon(Icons.picture_as_pdf),
-                    label: const Text('Exportar PDF'),
+                    onPressed: _exportAllToCsv, // Exporta todos
+                    icon: const Icon(Icons.file_download), // Ícone diferente para "todos"
+                    label: const Text('Exportar Todos (CSV)'),
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(0, 50),
                       shape: RoundedRectangleBorder(
@@ -489,11 +605,24 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 16), // Espaçamento entre os botões de CSV e PDF
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: _exportToPdf, // Implementar futuramente
+                icon: const Icon(Icons.picture_as_pdf),
+                label: const Text('Exportar PDF'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(200, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: 20),
             Center(
               child: TextButton(
                 onPressed: () {
-                  // Volta para a DashboardScreen
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(builder: (context) => const DashboardScreen()),
