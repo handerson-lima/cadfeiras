@@ -130,6 +130,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     selectedTileColor: Colors.blue.withOpacity(0.1),
                     onTap: () => _onItemTapped(2),
                   ),
+                  ListTile(
+                    leading: const Icon(Icons.report),
+                    title: const Text('Relatórios'),
+                    selected: _selectedIndex == 3,
+                    selectedTileColor: Colors.blue.withOpacity(0.1),
+                    onTap: () => _onItemTapped(3)
+                  ),
                 ],
               ),
             ),
