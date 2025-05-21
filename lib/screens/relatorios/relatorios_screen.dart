@@ -1,27 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Para formatar datas
-import 'package:csv/csv.dart'; // Para gerar CSV
-import 'dart:io' show File, Platform; // Para verificar a plataforma
-import 'package:flutter/foundation.dart' show kIsWeb; // Para verificar se é web
+import 'package:intl/intl.dart';
+import 'package:csv/csv.dart';
+import 'dart:io' show File, Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
-// Condicionalmente importar pacotes específicos de plataforma
-import 'package:path_provider/path_provider.dart' // Para salvar arquivos em mobile
-if (dart.library.html) 'package:flutter_web_plugins/flutter_web_plugins.dart' as web_plugins; // Placeholder para web
+import 'package:path_provider/path_provider.dart'
+if (dart.library.html) 'package:flutter_web_plugins/flutter_web_plugins.dart' as web_plugins;
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart' // Para gerenciar permissões em mobile
-if (dart.library.html) 'package:flutter_web_plugins/flutter_web_plugins.dart' as web_plugins; // Placeholder para web
+import 'package:permission_handler/permission_handler.dart'
+if (dart.library.html) 'package:flutter_web_plugins/flutter_web_plugins.dart' as web_plugins;
 import 'package:permission_handler/permission_handler.dart';
 
-
-// Para a web, precisamos de 'dart:html' para downloads.
-// Usamos um import condicional para evitar erros de compilação em outras plataformas.
-import 'dart:html' as html; // Usado apenas para web
+import 'dart:html' as html;
 
 import '../../Model/feirante.dart';
 import '../../Pages/Dashboard/dashboard.dart';
 import '../../Pages/cadastro feirantes/Components/feiras_selection.dart';
 import '../../Pages/cadastro feirantes/Components/produtos_selection.dart';
-import '../../services/feirante_service.dart'; // Importe o seu FeiranteService
+import '../../services/feirante_service.dart';
 import '../dashboard/dashboard_screen.dart';
 
 class RelatoriosScreen extends StatefulWidget {
@@ -32,10 +28,10 @@ class RelatoriosScreen extends StatefulWidget {
 }
 
 class _RelatoriosScreenState extends State<RelatoriosScreen> {
-  // Use a sua instância de FeiranteService
   final FeiranteService _feiranteService = FeiranteService();
   List<Feirante> _feirantesFiltrados = [];
   bool _isLoading = false;
+  bool _filtersApplied = false; // NOVA VARIÁVEL DE ESTADO
 
   // Variáveis para os filtros
   DateTime? _dataCadastroInicio;
@@ -49,7 +45,10 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchFeirantes(); // Inicia buscando todos os feirantes para a exibição inicial
+    // No início, não aplicamos filtros, então _filtersApplied é false
+    // _feirantesFiltrados pode ficar vazia ou ser preenchida com uma mensagem padrão,
+    // já que o resumo só aparecerá se _filtersApplied for true.
+    _feirantesFiltrados = []; // Garante que a lista filtrada esteja vazia no início
   }
 
   @override
@@ -59,36 +58,40 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
     super.dispose();
   }
 
-  Future<void> _fetchFeirantes() async {
-    setState(() {
-      _isLoading = true;
-    });
-    try {
-      // Usa o getAllFeirantes do seu FeiranteService
-      final feirantes = await _feiranteService.getAllFeirantes();
-      setState(() {
-        _feirantesFiltrados = feirantes; // Inicializa com todos os feirantes
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao carregar feirantes: $e')),
-      );
-      setState(() {
-        _feirantesFiltrados = [];
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
+  // Não precisamos de _fetchFeirantes inicial, pois o resumo só aparece com filtro.
+  // Se quiser mostrar um resumo "geral" antes de aplicar filtros, o _fetchFeirantes
+  // teria que ser ajustado para não setar _filtersApplied como true.
 
   Future<void> _applyFilters() async {
     setState(() {
       _isLoading = true;
+      _filtersApplied = false; // Reseta antes de verificar e aplicar
     });
+
     try {
-      // Busca todos os feirantes para aplicar os filtros localmente
+      // Verifica se algum filtro foi realmente preenchido
+      bool anyFilterActive = _dataCadastroInicio != null ||
+          _dataCadastroFim != null ||
+          _feirasFiltro.isNotEmpty ||
+          _produtosFiltro.isNotEmpty ||
+          (_cidadeFiltroController != null && _cidadeFiltroController!.isNotEmpty) ||
+          (_minBancasController.text.isNotEmpty && int.tryParse(_minBancasController.text) != null) ||
+          (_maxBancasController.text.isNotEmpty && int.tryParse(_maxBancasController.text) != null);
+
+
+      if (!anyFilterActive) {
+        // Se nenhum filtro foi preenchido, apenas exibe mensagem e não mostra o resumo
+        setState(() {
+          _feirantesFiltrados = [];
+          _filtersApplied = false; // Confirma que nenhum filtro foi aplicado
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nenhum filtro aplicado. Por favor, preencha pelo menos um campo de filtro.')),
+        );
+        return; // Sai da função se não há filtros
+      }
+
       List<Feirante> allFeirantes = await _feiranteService.getAllFeirantes();
 
       _feirantesFiltrados = allFeirantes.where((feirante) {
@@ -96,17 +99,14 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
 
         // Filtro por data de cadastro
         if (_dataCadastroInicio != null && _dataCadastroFim != null && feirante.dataCadastro != null) {
-          // Normaliza as datas para comparar apenas dia, mês e ano
           final feiranteDate = DateTime(feirante.dataCadastro!.year, feirante.dataCadastro!.month, feirante.dataCadastro!.day);
           final startDate = DateTime(_dataCadastroInicio!.year, _dataCadastroInicio!.month, _dataCadastroInicio!.day);
-          // Adiciona um dia e subtrai um microssegundo para incluir o dia final completo
           final endDate = DateTime(_dataCadastroFim!.year, _dataCadastroFim!.month, _dataCadastroFim!.day).add(const Duration(days: 1, microseconds: -1));
 
           if (feiranteDate.isBefore(startDate) || feiranteDate.isAfter(endDate)) {
             matches = false;
           }
         } else if (_dataCadastroInicio != null && feirante.dataCadastro == null) {
-          // Se um período de data inicial foi selecionado, mas o feirante não tem data de cadastro, não corresponde.
           matches = false;
         }
 
@@ -156,12 +156,17 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
         return matches;
       }).toList();
 
+      setState(() {
+        _filtersApplied = true; // Define como true porque filtros foram aplicados
+      });
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao aplicar filtros: $e')),
       );
       setState(() {
         _feirantesFiltrados = [];
+        _filtersApplied = false; // Em caso de erro, resetar
       });
     } finally {
       setState(() {
@@ -220,8 +225,22 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
     }
   }
 
-  // Função genérica para gerar CSV a partir de uma lista de feirantes
-  // e lidar com o salvamento/download dependendo da plataforma
+  void _clearFilters() {
+    setState(() {
+      _dataCadastroInicio = null;
+      _dataCadastroFim = null;
+      _feirasFiltro.clear();
+      _produtosFiltro.clear();
+      _cidadeFiltroController = null;
+      _minBancasController.clear();
+      _maxBancasController.clear();
+      _feirantesFiltrados = []; // Limpa os resultados filtrados
+      _filtersApplied = false; // Indica que não há filtros aplicados
+    });
+    // Não chama _fetchFeirantes aqui, pois não queremos exibir o resumo geral
+    // Ele simplesmente some até que um novo filtro seja aplicado.
+  }
+
   Future<void> _generateAndExportCsv(List<Feirante> feirantes, String filenamePrefix) async {
     if (feirantes.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -231,14 +250,12 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
     }
 
     List<List<dynamic>> csvData = [];
-    // Cabeçalho
     csvData.add([
       'Nome', 'CPF', 'Telefone', 'Cidade', 'Endereço', 'Complemento',
       'Dependentes (Sim/Não)', 'Quantidade Dependentes', 'Feiras', 'Produtos',
       'Quantidade Bancas', 'Local Coleta', 'Data Cadastro'
     ]);
 
-    // Dados dos feirantes
     for (var feirante in feirantes) {
       csvData.add([
         feirante.nome,
@@ -253,7 +270,6 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
         feirante.produtosSelecionados.join('; '),
         feirante.quantidadeBancas,
         feirante.localColeta,
-        // Formata a data de cadastro para o CSV
         feirante.dataCadastro != null
             ? DateFormat('dd/MM/yyyy HH:mm').format(feirante.dataCadastro!)
             : '',
@@ -264,7 +280,6 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
     final filename = '$filenamePrefix${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.csv';
 
     if (kIsWeb) {
-      // Lógica para web
       try {
         final blob = html.Blob([csvString], 'text/csv');
         final url = html.Url.createObjectUrlFromBlob(blob);
@@ -286,9 +301,7 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
         );
       }
     } else {
-      // Lógica para mobile (Android/iOS)
       try {
-        // Solicitar permissão de armazenamento
         var status = await Permission.storage.request();
         if (!status.isGranted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -297,10 +310,7 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
           return;
         }
 
-        // Obter diretório para salvar o arquivo
-        final directory = await getExternalStorageDirectory(); // Para Android
-        // Para iOS, você pode usar getApplicationDocumentsDirectory()
-        // ou pedir ao usuário onde salvar usando file_picker
+        final directory = await getExternalStorageDirectory();
 
         if (directory == null) {
           throw Exception("Não foi possível obter o diretório de armazenamento externo.");
@@ -321,18 +331,22 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
     }
   }
 
-  // Exportar apenas os feirantes filtrados
   Future<void> _exportFilteredToCsv() async {
+    if (!_filtersApplied) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nenhum filtro aplicado para exportar dados filtrados.')),
+      );
+      return;
+    }
     await _generateAndExportCsv(_feirantesFiltrados, 'relatorio_feirantes_filtrado_');
   }
 
-  // Exportar todos os feirantes (sem filtro)
   Future<void> _exportAllToCsv() async {
     setState(() {
       _isLoading = true;
     });
     try {
-      final allFeirantes = await _feiranteService.getAllFeirantes(); // Busca todos novamente
+      final allFeirantes = await _feiranteService.getAllFeirantes();
       await _generateAndExportCsv(allFeirantes, 'relatorio_feirantes_todos_');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -378,7 +392,6 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            // Filtro por Data de Cadastro
             ListTile(
               title: Text(
                 _dataCadastroInicio == null
@@ -389,7 +402,6 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
               onTap: _pickDateRange,
             ),
             const SizedBox(height: 10),
-            // Filtro por Cidade
             TextFormField(
               initialValue: _cidadeFiltroController,
               decoration: InputDecoration(
@@ -406,7 +418,6 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
               },
             ),
             const SizedBox(height: 16),
-            // Filtro: Quantidade de Bancas
             Row(
               children: [
                 Expanded(
@@ -443,7 +454,6 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            // Filtro por Feiras
             GestureDetector(
               onTap: _selectFeirasFilter,
               child: AbsorbPointer(
@@ -486,7 +496,6 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
                 ),
               ),
             const SizedBox(height: 16),
-            // Filtro por Produtos
             GestureDetector(
               onTap: _selectProdutosFilter,
               child: AbsorbPointer(
@@ -542,36 +551,69 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 10), // Espaço após o botão aplicar filtros
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: _clearFilters,
+                icon: const Icon(Icons.clear),
+                label: const Text('Limpar Filtros'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(200, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  backgroundColor: Colors.orange, // Cor para diferenciar
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
             const Divider(height: 40, thickness: 1),
-            // Inicio da seção de resumo (APENAS O RESUMO)
-            const Text(
-              'Resumo dos Feirantes:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            _feirantesFiltrados.isEmpty
-                ? const Text('Nenhum feirante encontrado com os filtros aplicados.')
-                : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Total de Feirantes Filtrados: ${_feirantesFiltrados.length}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+
+            // Condicionalmente exibe o resumo APENAS SE _filtersApplied for true
+            if (_filtersApplied) // <-- AQUI ESTÁ A MUDANÇA PRINCIPAL
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Resumo dos Feirantes Filtrados:', // Título mais específico
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  _feirantesFiltrados.isEmpty
+                      ? const Text('Nenhum feirante encontrado com os filtros aplicados.')
+                      : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Total de Feirantes Filtrados: ${_feirantesFiltrados.length}',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Média de Bancas por Feirante: ${(_feirantesFiltrados.map((f) => f.quantidadeBancas).fold(0, (prev, element) => prev + element) / (_feirantesFiltrados.isNotEmpty ? _feirantesFiltrados.length : 1)).toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Cidades Distintas: ${_feirantesFiltrados.map((f) => f.cidade).toSet().length}',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            if (!_filtersApplied) // Mensagem quando não há filtros aplicados
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20.0),
+                child: Center(
+                  child: Text(
+                    'Preencha os filtros acima e clique em "Aplicar Filtros" para ver o resumo dos feirantes.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic, color: Colors.grey),
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Média de Bancas por Feirante: ${(_feirantesFiltrados.map((f) => f.quantidadeBancas).fold(0, (prev, element) => prev + element) / (_feirantesFiltrados.isNotEmpty ? _feirantesFiltrados.length : 1)).toStringAsFixed(2)}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Cidades Distintas: ${_feirantesFiltrados.map((f) => f.cidade).toSet().length}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-                // Adicione mais resumos conforme necessário
-              ],
-            ),
-            // Fim da seção de resumo
+              ),
+
             const Divider(height: 40, thickness: 1),
             const Text(
               'Opções de Exportação:',
@@ -583,7 +625,7 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _exportFilteredToCsv, // Exporta os filtrados
+                    onPressed: _exportFilteredToCsv, // Exporta os filtrados (agora condicional)
                     icon: const Icon(Icons.insert_drive_file),
                     label: const Text('Exportar Filtrados (CSV)'),
                     style: ElevatedButton.styleFrom(
@@ -597,8 +639,8 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _exportAllToCsv, // Exporta todos
-                    icon: const Icon(Icons.file_download), // Ícone diferente para "todos"
+                    onPressed: _exportAllToCsv, // Exporta todos (sempre disponível)
+                    icon: const Icon(Icons.file_download),
                     label: const Text('Exportar Todos (CSV)'),
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(0, 50),
@@ -610,10 +652,10 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16), // Espaçamento entre os botões de CSV e PDF
+            const SizedBox(height: 16),
             Center(
               child: ElevatedButton.icon(
-                onPressed: _exportToPdf, // Implementar futuramente
+                onPressed: _exportToPdf,
                 icon: const Icon(Icons.picture_as_pdf),
                 label: const Text('Exportar PDF'),
                 style: ElevatedButton.styleFrom(
