@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Para formatar datas
 import 'package:csv/csv.dart'; // Para gerar CSV
-import 'dart:io' show File, Platform; // Para verificar a plataforma (não funciona no web, mas útil para diferenciar)
+import 'dart:io' show File, Platform; // Para verificar a plataforma
 import 'package:flutter/foundation.dart' show kIsWeb; // Para verificar se é web
 
 // Condicionalmente importar pacotes específicos de plataforma
@@ -18,10 +18,10 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:html' as html; // Usado apenas para web
 
 import '../../Model/feirante.dart';
-import '../../Pages/Dashboard/dashboard.dart'; // Removido se não for usado explicitamente
+import '../../Pages/Dashboard/dashboard.dart';
 import '../../Pages/cadastro feirantes/Components/feiras_selection.dart';
 import '../../Pages/cadastro feirantes/Components/produtos_selection.dart';
-import '../../services/feirante_service.dart';
+import '../../services/feirante_service.dart'; // Importe o seu FeiranteService
 import '../dashboard/dashboard_screen.dart';
 
 class RelatoriosScreen extends StatefulWidget {
@@ -32,6 +32,7 @@ class RelatoriosScreen extends StatefulWidget {
 }
 
 class _RelatoriosScreenState extends State<RelatoriosScreen> {
+  // Use a sua instância de FeiranteService
   final FeiranteService _feiranteService = FeiranteService();
   List<Feirante> _feirantesFiltrados = [];
   bool _isLoading = false;
@@ -48,7 +49,7 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchFeirantes();
+    _fetchFeirantes(); // Inicia buscando todos os feirantes para a exibição inicial
   }
 
   @override
@@ -63,9 +64,10 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
       _isLoading = true;
     });
     try {
+      // Usa o getAllFeirantes do seu FeiranteService
       final feirantes = await _feiranteService.getAllFeirantes();
       setState(() {
-        _feirantesFiltrados = feirantes;
+        _feirantesFiltrados = feirantes; // Inicializa com todos os feirantes
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -86,23 +88,28 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
       _isLoading = true;
     });
     try {
+      // Busca todos os feirantes para aplicar os filtros localmente
       List<Feirante> allFeirantes = await _feiranteService.getAllFeirantes();
 
       _feirantesFiltrados = allFeirantes.where((feirante) {
         bool matches = true;
 
         // Filtro por data de cadastro
-        if (_dataCadastroInicio != null && feirante.dataCadastro != null) {
+        if (_dataCadastroInicio != null && _dataCadastroFim != null && feirante.dataCadastro != null) {
+          // Normaliza as datas para comparar apenas dia, mês e ano
           final feiranteDate = DateTime(feirante.dataCadastro!.year, feirante.dataCadastro!.month, feirante.dataCadastro!.day);
           final startDate = DateTime(_dataCadastroInicio!.year, _dataCadastroInicio!.month, _dataCadastroInicio!.day);
-          final endDate = DateTime(_dataCadastroFim!.year, _dataCadastroFim!.month, _dataCadastroFim!.day);
+          // Adiciona um dia e subtrai um microssegundo para incluir o dia final completo
+          final endDate = DateTime(_dataCadastroFim!.year, _dataCadastroFim!.month, _dataCadastroFim!.day).add(const Duration(days: 1, microseconds: -1));
 
           if (feiranteDate.isBefore(startDate) || feiranteDate.isAfter(endDate)) {
             matches = false;
           }
         } else if (_dataCadastroInicio != null && feirante.dataCadastro == null) {
+          // Se um período de data inicial foi selecionado, mas o feirante não tem data de cadastro, não corresponde.
           matches = false;
         }
+
 
         // Filtro por feiras
         if (_feirasFiltro.isNotEmpty) {
@@ -246,6 +253,7 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
         feirante.produtosSelecionados.join('; '),
         feirante.quantidadeBancas,
         feirante.localColeta,
+        // Formata a data de cadastro para o CSV
         feirante.dataCadastro != null
             ? DateFormat('dd/MM/yyyy HH:mm').format(feirante.dataCadastro!)
             : '',
@@ -289,6 +297,7 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
           return;
         }
 
+        // Obter diretório para salvar o arquivo
         final directory = await getExternalStorageDirectory(); // Para Android
         // Para iOS, você pode usar getApplicationDocumentsDirectory()
         // ou pedir ao usuário onde salvar usando file_picker
@@ -312,18 +321,18 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
     }
   }
 
-  // Exportar apenas os feirantes filtrados (função já existente, agora usa a genérica)
+  // Exportar apenas os feirantes filtrados
   Future<void> _exportFilteredToCsv() async {
     await _generateAndExportCsv(_feirantesFiltrados, 'relatorio_feirantes_filtrado_');
   }
 
-  // NOVA FUNÇÃO: Exportar todos os feirantes (sem filtro)
+  // Exportar todos os feirantes (sem filtro)
   Future<void> _exportAllToCsv() async {
     setState(() {
       _isLoading = true;
     });
     try {
-      final allFeirantes = await _feiranteService.getAllFeirantes();
+      final allFeirantes = await _feiranteService.getAllFeirantes(); // Busca todos novamente
       await _generateAndExportCsv(allFeirantes, 'relatorio_feirantes_todos_');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -534,39 +543,35 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
               ),
             ),
             const Divider(height: 40, thickness: 1),
+            // Inicio da seção de resumo (APENAS O RESUMO)
             const Text(
-              'Feirantes Encontrados:',
+              'Resumo dos Feirantes:',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
             _feirantesFiltrados.isEmpty
                 ? const Text('Nenhum feirante encontrado com os filtros aplicados.')
-                : ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _feirantesFiltrados.length,
-              itemBuilder: (context, index) {
-                final feirante = _feirantesFiltrados[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: ListTile(
-                    leading: feirante.foto != null && feirante.foto!.isNotEmpty
-                        ? CircleAvatar(
-                      backgroundImage: MemoryImage(feirante.foto!),
-                    )
-                        : const CircleAvatar(child: Icon(Icons.person)),
-                    title: Text(feirante.nome),
-                    subtitle: Text(
-                      'CPF: ${feirante.cpf}\n'
-                          'Cidade: ${feirante.cidade}\n'
-                          'Bancas: ${feirante.quantidadeBancas}\n'
-                          'Feiras: ${feirante.feirasSelecionadas.isEmpty ? 'N/A' : feirante.feirasSelecionadas.join(', ')}',
-                    ),
-                    isThreeLine: true,
-                  ),
-                );
-              },
+                : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total de Feirantes Filtrados: ${_feirantesFiltrados.length}',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Média de Bancas por Feirante: ${(_feirantesFiltrados.map((f) => f.quantidadeBancas).fold(0, (prev, element) => prev + element) / (_feirantesFiltrados.isNotEmpty ? _feirantesFiltrados.length : 1)).toStringAsFixed(2)}',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Cidades Distintas: ${_feirantesFiltrados.map((f) => f.cidade).toSet().length}',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+                // Adicione mais resumos conforme necessário
+              ],
             ),
+            // Fim da seção de resumo
             const Divider(height: 40, thickness: 1),
             const Text(
               'Opções de Exportação:',
