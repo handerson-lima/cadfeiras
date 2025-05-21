@@ -88,9 +88,16 @@ class _FeirantesCadastradosScreenState extends State<FeirantesCadastradosScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Feirantes Cadastrados'),
-        backgroundColor: Colors.blue,
+        title: const Text(
+        'Feirantes Cadastrados',
+        style: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: Colors.white, // Cor do texto do título
+        ),
       ),
+      backgroundColor: Colors.grey,
+    ),
       body: Column(
         children: [
           Padding(

@@ -131,8 +131,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     print('[DashboardScreen] Construindo interface do dashboard');
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
-        backgroundColor: Colors.blue,
+        title: const Text(
+          'Dashboard',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white, // Cor do texto do título
+          ),
+        ),
+        backgroundColor: Colors.grey,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

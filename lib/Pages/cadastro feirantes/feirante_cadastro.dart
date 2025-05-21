@@ -153,7 +153,7 @@ class _FeiranteCadastroScreenState extends State<FeiranteCadastroScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'CADASTRO DE FEIRANTES',
+          'Cadastro de Feirantes',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,

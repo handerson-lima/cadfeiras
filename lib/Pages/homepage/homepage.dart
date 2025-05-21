@@ -38,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sistema de Feirantes'),
+        title: const Text('CadFeiras'),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         leading: isMobile
