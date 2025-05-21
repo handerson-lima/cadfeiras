@@ -119,4 +119,6 @@ class FeiranteService {
 
     return response.statusCode == 200;
   }
+
+  getAllFeirantes() {}
 }

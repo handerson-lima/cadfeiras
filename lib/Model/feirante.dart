@@ -15,6 +15,7 @@ class Feirante {
   final int quantidadeBancas;
   final String localColeta;
 
+
   Feirante({
     required this.nome,
     required this.cpf,
@@ -29,6 +30,8 @@ class Feirante {
     required this.quantidadeBancas,
     required this.localColeta,
   });
+
+  get dataCadastro => null;
 
   Map<String, dynamic> toJson() {
     return {
@@ -46,4 +49,6 @@ class Feirante {
       "foto": foto != null ? base64Encode(foto!) : null,
     };
   }
+
+
 }

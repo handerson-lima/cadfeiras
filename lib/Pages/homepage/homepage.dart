@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../screens/relatorios/relatorios_screen.dart';
 import '../Auth/login_page.dart';
 import '../Dashboard/dashboard.dart';
 import '../cadastro feirantes/feirante_cadastro.dart';
@@ -19,6 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
     DashboardScreen(),
     const FeiranteCadastroScreen(),
     const FeirantesCadastradosScreen(),
+    const RelatoriosScreen(),
   ];
 
   void _onItemTapped(int index) {

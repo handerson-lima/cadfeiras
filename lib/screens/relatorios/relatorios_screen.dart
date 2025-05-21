@@ -6,6 +6,9 @@ import 'dart:io'; // Para operações de arquivo
 import 'package:csv/csv.dart'; // Para gerar CSV
 
 import '../../Model/feirante.dart';
+import '../../Pages/Dashboard/dashboard.dart';
+import '../../Pages/cadastro feirantes/Components/feiras_selection.dart';
+import '../../Pages/cadastro feirantes/Components/produtos_selection.dart';
 import '../../services/feirante_service.dart';
 import '../feirante_cadastro/Components/feiras_selection.dart';
 import '../feirante_cadastro/Components/produtos_selection.dart';
