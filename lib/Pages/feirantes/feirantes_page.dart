@@ -45,8 +45,10 @@ class _FeirantesCadastradosScreenState extends State<FeirantesCadastradosScreen>
             endereco: record['endereco'] ?? '',
             complemento: record['complemento'],
             dependentesQuantidade: record['dependentes_quantidade'] as int?,
-            feirasSelecionadas: (record['feiras'] as List<dynamic>?)?.map((e) => e.toString()).toSet() ?? {},
-            produtosSelecionados: (record['produtos'] as List<dynamic>?)?.map((e) => e.toString()).toSet() ?? {},
+            feirasSelecionadas: (record['feiras'] as List<dynamic>?)?.map((e) =>
+                e.toString()).toSet() ?? {},
+            produtosSelecionados: (record['produtos'] as List<dynamic>?)?.map((
+                e) => e.toString()).toSet() ?? {},
             quantidadeBancas: record['quantidade_bancas'] as int? ?? 0,
             localColeta: record['local_coleta'] ?? '',
           );
@@ -171,12 +173,14 @@ class _FeirantesCadastradosScreenState extends State<FeirantesCadastradosScreen>
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text('CPF: ${feirante.cpf}'),
-                    trailing: const Icon(Icons.arrow_forward_ios, color: Colors.blue),
+                    trailing: const Icon(
+                        Icons.arrow_forward_ios, color: Colors.blue),
                     onTap: () async { // Adicionado 'async' aqui
                       await Navigator.push( // Adicionado 'await' aqui
                         context,
                         MaterialPageRoute(
-                          builder: (context) => FeiranteInfoScreen(feirante: feirante),
+                          builder: (context) =>
+                              FeiranteInfoScreen(feirante: feirante),
                         ),
                       );
                       // Após o retorno da FeiranteInfoScreen, recarrega os dados
