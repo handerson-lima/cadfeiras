@@ -89,15 +89,15 @@ class _FeirantesCadastradosScreenState extends State<FeirantesCadastradosScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-        'Feirantes Cadastrados',
-        style: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: Colors.white, // Cor do texto do título
+          'Feirantes Cadastrados',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white, // Cor do texto do título
+          ),
         ),
+        backgroundColor: Colors.grey,
       ),
-      backgroundColor: Colors.grey,
-    ),
       body: Column(
         children: [
           Padding(
@@ -172,13 +172,15 @@ class _FeirantesCadastradosScreenState extends State<FeirantesCadastradosScreen>
                     ),
                     subtitle: Text('CPF: ${feirante.cpf}'),
                     trailing: const Icon(Icons.arrow_forward_ios, color: Colors.blue),
-                    onTap: () {
-                      Navigator.push(
+                    onTap: () async { // Adicionado 'async' aqui
+                      await Navigator.push( // Adicionado 'await' aqui
                         context,
                         MaterialPageRoute(
                           builder: (context) => FeiranteInfoScreen(feirante: feirante),
                         ),
                       );
+                      // Após o retorno da FeiranteInfoScreen, recarrega os dados
+                      _fetchFeirantes();
                     },
                   ),
                 );

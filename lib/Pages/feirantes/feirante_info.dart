@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:io'; // Import para File
 import 'dart:typed_data'; // Import para Uint8List
 import 'package:image_picker/image_picker.dart'; // Import para ImagePicker
 
