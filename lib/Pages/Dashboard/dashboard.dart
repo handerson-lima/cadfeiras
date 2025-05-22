@@ -148,6 +148,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            Image.asset("assets/mascote.png", width: 200, height: 200 ),
             const Text(
               'Informações Gerais',
               style: TextStyle(
