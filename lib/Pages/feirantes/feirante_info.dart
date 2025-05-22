@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:io'; // Import para File
+import 'dart:typed_data'; // Import para Uint8List
+import 'package:image_picker/image_picker.dart'; // Import para ImagePicker
+
 import '../../Model/feirante.dart';
 import '../cadastro feirantes/Components/feiras_selection.dart';
 import '../cadastro feirantes/Components/produtos_selection.dart';
@@ -17,29 +21,59 @@ class FeiranteInfoScreen extends StatefulWidget {
 class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
   late Set<String> _feirasSelecionadas;
   late Set<String> _produtosSelecionados;
+  late TextEditingController _nomeController;
+  late TextEditingController _telefoneController;
+  late TextEditingController _cidadeController;
+  late TextEditingController _enderecoController;
+  late TextEditingController _complementoController;
+  late TextEditingController _dependentesQuantidadeController;
   late TextEditingController _quantidadeBancasController;
   late TextEditingController _localColetaController;
+
+  // Alterado o tipo para Uint8List?
+  Uint8List? _selectedImageBytes; // Para armazenar os bytes da nova imagem selecionada
+
   final FeiranteService _feiranteService = FeiranteService();
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     _feirasSelecionadas = Set.from(widget.feirante.feirasSelecionadas);
     _produtosSelecionados = Set.from(widget.feirante.produtosSelecionados);
+    _nomeController = TextEditingController(text: widget.feirante.nome);
+    _telefoneController = TextEditingController(text: widget.feirante.telefone);
+    _cidadeController = TextEditingController(text: widget.feirante.cidade);
+    _enderecoController = TextEditingController(text: widget.feirante.endereco);
+    _complementoController = TextEditingController(text: widget.feirante.complemento);
+    _dependentesQuantidadeController = TextEditingController(text: (widget.feirante.dependentesQuantidade ?? 0).toString());
     _quantidadeBancasController = TextEditingController(text: widget.feirante.quantidadeBancas.toString());
     _localColetaController = TextEditingController(text: widget.feirante.localColeta);
+
+    // Inicializa com os bytes da foto existente, se houver
+    _selectedImageBytes = widget.feirante.foto;
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes(); // Lê o arquivo como bytes
+      setState(() {
+        _selectedImageBytes = bytes;
+      });
+    }
   }
 
   Future<void> _submit() async {
     final updatedFeirante = Feirante(
       cpf: widget.feirante.cpf,
-      nome: widget.feirante.nome,
-      telefone: widget.feirante.telefone,
-      cidade: widget.feirante.cidade,
-      foto: widget.feirante.foto,
-      endereco: widget.feirante.endereco,
-      complemento: widget.feirante.complemento,
-      dependentesQuantidade: widget.feirante.dependentesQuantidade,
+      nome: _nomeController.text,
+      telefone: _telefoneController.text,
+      cidade: _cidadeController.text,
+      foto: _selectedImageBytes, // Agora passa os bytes da imagem
+      endereco: _enderecoController.text,
+      complemento: _complementoController.text,
+      dependentesQuantidade: int.tryParse(_dependentesQuantidadeController.text) ?? 0,
       feirasSelecionadas: _feirasSelecionadas,
       produtosSelecionados: _produtosSelecionados,
       quantidadeBancas: int.tryParse(_quantidadeBancasController.text) ?? widget.feirante.quantidadeBancas,
@@ -52,7 +86,12 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Informações atualizadas para ${widget.feirante.nome}:\n'
+              'Informações atualizadas para ${updatedFeirante.nome}:\n'
+                  'Telefone: ${updatedFeirante.telefone}\n'
+                  'Cidade: ${updatedFeirante.cidade}\n'
+                  'Endereço: ${updatedFeirante.endereco}\n'
+                  'Complemento: ${updatedFeirante.complemento}\n'
+                  'Dependentes: ${updatedFeirante.dependentesQuantidade}\n'
                   'Feiras em que atua: ${_feirasSelecionadas.isEmpty ? "Nenhuma" : _feirasSelecionadas.join(", ")}\n'
                   'Produtos que comercializa: ${_produtosSelecionados.isEmpty ? "Nenhum" : _produtosSelecionados.join(", ")}\n'
                   'Quantidade de bancas: ${_quantidadeBancasController.text.isEmpty ? "Não informado" : _quantidadeBancasController.text}\n'
@@ -107,6 +146,12 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
 
   @override
   void dispose() {
+    _nomeController.dispose();
+    _telefoneController.dispose();
+    _cidadeController.dispose();
+    _enderecoController.dispose();
+    _complementoController.dispose();
+    _dependentesQuantidadeController.dispose();
     _quantidadeBancasController.dispose();
     _localColetaController.dispose();
     super.dispose();
@@ -115,19 +160,36 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Editar Informações do Feirante'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
-                'assets/logo.png',
-                height: 150,
-                errorBuilder: (context, error, stackTrace) => const Icon(
-                  Icons.store,
-                  size: 100,
-                  color: Colors.blue,
+              // Exibição da foto e botão de edição
+              GestureDetector(
+                onTap: _pickImage, // Chama a função para selecionar imagem
+                child: CircleAvatar(
+                  radius: 80,
+                  backgroundColor: Colors.grey[200],
+                  // Se houver bytes de imagem selecionados, use MemoryImage
+                  // Caso contrário, se a foto original não for nula, assume que são bytes
+                  // Caso contrário, mostra o ícone da câmera
+                  backgroundImage: _selectedImageBytes != null
+                      ? MemoryImage(_selectedImageBytes!) as ImageProvider<Object>?
+                      : null,
+                  child: _selectedImageBytes == null
+                      ? Icon(
+                    Icons.camera_alt,
+                    size: 60,
+                    color: Colors.grey[600],
+                  )
+                      : null,
                 ),
               ),
               const SizedBox(height: 20),
@@ -140,6 +202,85 @@ class _FeiranteInfoScreenState extends State<FeiranteInfoScreen> {
                 ),
               ),
               const SizedBox(height: 40),
+              TextField(
+                controller: _nomeController,
+                keyboardType: TextInputType.text,
+                decoration: InputDecoration(
+                  labelText: 'Nome do Feirante',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                ),
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: _telefoneController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: 'Telefone',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                ),
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: _cidadeController,
+                keyboardType: TextInputType.text,
+                decoration: InputDecoration(
+                  labelText: 'Cidade',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                ),
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: _enderecoController,
+                keyboardType: TextInputType.streetAddress,
+                decoration: InputDecoration(
+                  labelText: 'Endereço',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                ),
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: _complementoController,
+                keyboardType: TextInputType.text,
+                decoration: InputDecoration(
+                  labelText: 'Complemento',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                ),
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: _dependentesQuantidadeController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: 'Quantidade de Dependentes',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                ),
+              ),
+              const SizedBox(height: 24),
               GestureDetector(
                 onTap: _selectFeiras,
                 child: AbsorbPointer(
