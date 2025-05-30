@@ -42,7 +42,7 @@ TextEditingController _maxBancasController = TextEditingController();
 @override
 void initState() {
 super.initState();
-print('[RelatoriosScreen] initState chamado às 05:13 PM -03, Friday, May 30, 2025');
+print('[RelatoriosScreen] initState chamado às 05:34 PM -03, Friday, May 30, 2025');
 _fetchFeirantes();
 }
 
@@ -323,13 +323,6 @@ return;
 }
 
 try {
-if (kIsWeb) {
-ScaffoldMessenger.of(context).showSnackBar(
-const SnackBar(content: Text('Exportação para PDF não suportada na web. Use CSV para download.')),
-);
-return;
-}
-
 final pdf = pw.Document();
 
 pdf.addPage(
@@ -347,7 +340,7 @@ pw.SizedBox(height: 10),
 pw.Divider(),
 pw.SizedBox(height: 10),
 pw.Text(
-'Gerado em: 05:13 PM -03, Friday, May 30, 2025',
+'Gerado em: 06:42 PM -03, Friday, May 30, 2025',
 style: const pw.TextStyle(fontSize: 16),
 ),
 pw.SizedBox(height: 20),
@@ -413,42 +406,193 @@ pw.Text(
 style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
 ),
 pw.SizedBox(height: 10),
-pw.Table.fromTextArray(
-headers: [
-'Nome', 'CPF', 'Telefone', 'Cidade', 'Endereço', 'Complemento',
-'Dependentes', 'Qtd Dependentes', 'Feiras', 'Produtos',
-'Qtd Bancas', 'Local Coleta', 'Data Cadastro'
-],
-data: _feirantesFiltrados.map((feirante) {
-return [
-feirante.nome,
-feirante.cpf,
-feirante.telefone,
-feirante.cidade,
-feirante.endereco,
-feirante.complemento ?? '',
-feirante.dependentesQuantidade != null && feirante.dependentesQuantidade! > 0 ? 'Sim' : 'Não',
-feirante.dependentesQuantidade ?? 0,
-feirante.feirasSelecionadas.join('; '),
-feirante.produtosSelecionados.join('; '),
-feirante.quantidadeBancas,
-feirante.localColeta,
-feirante.dataCadastro != null
-? DateFormat('dd/MM/yyyy HH:mm').format(feirante.dataCadastro!)
-    : '',
-];
-}).toList(),
-border: pw.TableBorder.all(),
-cellStyle: const pw.TextStyle(fontSize: 12),
+..._feirantesFiltrados.asMap().entries.map((entry) {
+int index = entry.key;
+Feirante feirante = entry.value;
+return pw.Column(
+crossAxisAlignment: pw.CrossAxisAlignment.start,
+children: [
+// Título do Feirante
+pw.Text(
+'Feirante ${index + 1}:',
+style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
 ),
+pw.SizedBox(height: 5),
+// Linha 1: Nome, CPF, Telefone, Cidade
+pw.Table(
+border: pw.TableBorder.all(color: PdfColors.grey300),
+columnWidths: {
+0: const pw.FixedColumnWidth(80), // Nome
+1: const pw.FixedColumnWidth(60), // CPF
+2: const pw.FixedColumnWidth(60), // Telefone
+3: const pw.FixedColumnWidth(50), // Cidade
+},
+children: [
+pw.TableRow(
+decoration: const pw.BoxDecoration(
+color: PdfColors.grey800,
+),
+children: [
+pw.Text('Nome', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+pw.Text('CPF', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+pw.Text('Telefone', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+pw.Text('Cidade', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+],
+),
+pw.TableRow(
+children: [
+pw.Text(feirante.nome ?? '', style: const pw.TextStyle(fontSize: 9)),
+pw.Text(feirante.cpf ?? '', style: const pw.TextStyle(fontSize: 9)),
+pw.Text(feirante.telefone ?? '', style: const pw.TextStyle(fontSize: 9)),
+pw.Text(feirante.cidade ?? '', style: const pw.TextStyle(fontSize: 9)),
+],
+decoration: const pw.BoxDecoration(
+color: PdfColors.white,
+),
+),
+],
+),
+pw.SizedBox(height: 5),
+// Linha 2: Endereço, Complemento, Dependentes, Quantidade Dependentes
+pw.Table(
+border: pw.TableBorder.all(color: PdfColors.grey300),
+columnWidths: {
+0: const pw.FixedColumnWidth(80), // Endereço
+1: const pw.FixedColumnWidth(60), // Complemento
+2: const pw.FixedColumnWidth(40), // Dependentes
+3: const pw.FixedColumnWidth(40), // Qtd Dependentes
+},
+children: [
+pw.TableRow(
+decoration: const pw.BoxDecoration(
+color: PdfColors.grey800,
+),
+children: [
+pw.Text('Endereço', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+pw.Text('Complemento', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+pw.Text('Dependentes', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+pw.Text('Qtd Dependentes', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+],
+),
+pw.TableRow(
+children: [
+pw.Text(feirante.endereco ?? '', style: const pw.TextStyle(fontSize: 9)),
+pw.Text(feirante.complemento ?? '', style: const pw.TextStyle(fontSize: 9)),
+pw.Text(feirante.dependentesQuantidade != null && feirante.dependentesQuantidade! > 0 ? 'Sim' : 'Não', style: const pw.TextStyle(fontSize: 9)),
+pw.Text(feirante.dependentesQuantidade?.toString() ?? '0', style: const pw.TextStyle(fontSize: 9)),
+],
+decoration: const pw.BoxDecoration(
+color: PdfColors.white,
+),
+),
+],
+),
+pw.SizedBox(height: 5),
+// Linha 3: Feiras, Produtos
+pw.Table(
+border: pw.TableBorder.all(color: PdfColors.grey300),
+columnWidths: {
+0: const pw.FixedColumnWidth(70), // Feiras
+1: const pw.FixedColumnWidth(70), // Produtos
+},
+children: [
+pw.TableRow(
+decoration: const pw.BoxDecoration(
+color: PdfColors.grey800,
+),
+children: [
+pw.Text('Feiras', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+pw.Text('Produtos', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+],
+),
+pw.TableRow(
+children: [
+pw.Text(feirante.feirasSelecionadas.join('; ') ?? '', style: const pw.TextStyle(fontSize: 9)),
+pw.Text(feirante.produtosSelecionados.join('; ') ?? '', style: const pw.TextStyle(fontSize: 9)),
+],
+decoration: const pw.BoxDecoration(
+color: PdfColors.white,
+),
+),
+],
+),
+pw.SizedBox(height: 5),
+// Linha 4: Quantidade Bancas, Local Coleta, Data Cadastro
+pw.Table(
+border: pw.TableBorder.all(color: PdfColors.grey300),
+columnWidths: {
+0: const pw.FixedColumnWidth(30), // Qtd Bancas
+1: const pw.FixedColumnWidth(50), // Local Coleta
+2: const pw.FixedColumnWidth(60), // Data Cadastro
+},
+children: [
+pw.TableRow(
+decoration: const pw.BoxDecoration(
+color: PdfColors.grey800,
+),
+children: [
+pw.Text('Qtd Bancas', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+pw.Text('Local Coleta', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+pw.Text('Data Cadastro', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+],
+),
+pw.TableRow(
+children: [
+pw.Text(feirante.quantidadeBancas.toString(), style: const pw.TextStyle(fontSize: 9)),
+pw.Text(feirante.localColeta ?? '', style: const pw.TextStyle(fontSize: 9)),
+pw.Text(feirante.dataCadastro != null ? DateFormat('dd/MM/yyyy HH:mm').format(feirante.dataCadastro!) : '', style: const pw.TextStyle(fontSize: 9)),
+],
+decoration: const pw.BoxDecoration(
+color: PdfColors.white,
+),
+),
+],
+),
+pw.SizedBox(height: 15), // Espaço entre feirantes
+],
+);
+}).toList(),
 ];
 },
 ),
 );
 
+final pdfBytes = await pdf.save();
+
+if (kIsWeb) {
+try {
+final blob = html.Blob([pdfBytes], 'application/pdf');
+final url = html.Url.createObjectUrlFromBlob(blob);
+final anchor = html.document.createElement('a') as html.AnchorElement
+..href = url
+..style.display = 'none'
+..download = 'relatorio_feirantes_filtrado_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.pdf';
+html.document.body!.children.add(anchor);
+anchor.click();
+html.document.body!.children.remove(anchor);
+html.Url.revokeObjectUrl(url);
+
+ScaffoldMessenger.of(context).showSnackBar(
+const SnackBar(content: Text('Relatório PDF gerado para download.')),
+);
+} catch (e) {
+ScaffoldMessenger.of(context).showSnackBar(
+SnackBar(content: Text('Erro ao gerar o PDF para download: $e')),
+);
+}
+} else {
+try {
+var status = await Permission.storage.request();
+if (!status.isGranted) {
+ScaffoldMessenger.of(context).showSnackBar(
+const SnackBar(content: Text('Permissão de armazenamento negada.')),
+);
+return;
+}
+
 final directory = await getTemporaryDirectory();
 final file = File('${directory.path}/relatorio_feirantes_filtrado_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.pdf');
-await file.writeAsBytes(await pdf.save());
+await file.writeAsBytes(pdfBytes);
 print('[RelatoriosScreen] PDF gerado em: ${file.path}');
 
 final result = await OpenFile.open(file.path);
@@ -459,6 +603,13 @@ SnackBar(content: Text('Erro ao abrir o PDF: ${result.message}')),
 );
 } else {
 print('[RelatoriosScreen] PDF aberto com sucesso');
+}
+} catch (e) {
+print('[RelatoriosScreen] Erro ao gerar o PDF: $e');
+ScaffoldMessenger.of(context).showSnackBar(
+SnackBar(content: Text('Erro ao gerar o PDF: $e')),
+);
+}
 }
 } catch (e) {
 print('[RelatoriosScreen] Erro ao gerar o PDF: $e');
