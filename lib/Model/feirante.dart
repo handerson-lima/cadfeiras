@@ -1,3 +1,5 @@
+// lib/Model/feirante.dart
+
 import 'dart:typed_data';
 import 'dart:convert'; // Para base64
 
@@ -15,7 +17,7 @@ class Feirante {
   final Set<String> produtosSelecionados;
   final int quantidadeBancas;
   final String localColeta;
-  final DateTime? dataCadastro; // Certifique-se de que este campo existe
+  final DateTime? dataCadastro;
 
   Feirante({
     this.id,
@@ -31,7 +33,7 @@ class Feirante {
     required this.produtosSelecionados,
     required this.quantidadeBancas,
     required this.localColeta,
-    this.dataCadastro, // Adicione no construtor
+    this.dataCadastro,
   });
 
   factory Feirante.fromJson(Map<String, dynamic> json) {
@@ -57,15 +59,25 @@ class Feirante {
     DateTime? _parseDateTime(dynamic dateTimeString) {
       if (dateTimeString is String && dateTimeString.isNotEmpty) {
         try {
-          // O Xata retorna 'xata.createdAt' em formato ISO 8601 UTC.
-          // '.toLocal()' converte para a hora local do dispositivo.
           return DateTime.parse(dateTimeString).toLocal();
         } catch (e) {
-          print('Erro ao parsear data: $e');
+          print('Erro ao parsear data em Feirante.fromJson: $e. String recebida: "$dateTimeString"');
           return null;
         }
       }
       return null;
+    }
+
+    // MODIFICAÇÃO PRINCIPAL AQUI:
+    // Acessar o campo 'createdAt' dentro do objeto aninhado 'xata'
+    String? dataCadastroString;
+    if (json['xata'] != null && json['xata'] is Map<String, dynamic>) {
+      dataCadastroString = json['xata']['createdAt'] as String?;
+    } else {
+      // Fallback ou log se a estrutura 'xata' não for encontrada como esperado
+      // Isso pode acontecer se a coluna 'xata.createdAt' não for solicitada
+      // ou se a resposta da API mudar.
+      print("WARN: Estrutura json['xata'] não encontrada ou não é um mapa no registro com id: ${json['id']}");
     }
 
     return Feirante(
@@ -77,18 +89,17 @@ class Feirante {
       foto: _decodeBase64Image(json['foto']),
       endereco: json['endereco'] as String,
       complemento: json['complemento'] as String?,
-      dependentesQuantidade: json['dependentes_quantidade'] as int?, // Ajuste o nome do campo se necessário
-      feirasSelecionadas: _convertListToSet(json['feiras']), // Ajuste o nome do campo
-      produtosSelecionados: _convertListToSet(json['produtos']), // Ajuste o nome do campo
-      quantidadeBancas: json['quantidade_bancas'] as int, // Ajuste o nome do campo
-      localColeta: json['local_coleta'] as String, // Ajuste o nome do campo
-      dataCadastro: _parseDateTime(json['xata.createdAt']), // <-- Lendo a data de criação do Xata
+      dependentesQuantidade: json['dependentes_quantidade'] as int?,
+      feirasSelecionadas: _convertListToSet(json['feiras']),
+      produtosSelecionados: _convertListToSet(json['produtos']),
+      quantidadeBancas: (json['quantidade_bancas'] as num?)?.toInt() ?? 0,
+      localColeta: json['local_coleta'] as String? ?? '',
+      dataCadastro: _parseDateTime(dataCadastroString),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      // 'id': id, // Normalmente o ID não é enviado ao criar/atualizar
       'nome': nome,
       'cpf': cpf,
       'telefone': telefone,
@@ -101,7 +112,6 @@ class Feirante {
       'produtos': produtosSelecionados.toList(),
       'quantidade_bancas': quantidadeBancas,
       'local_coleta': localColeta,
-      // 'xata.createdAt': dataCadastro?.toIso8601String(), // Não envie, o Xata gera automaticamente
     };
   }
 }
