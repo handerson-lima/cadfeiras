@@ -18,7 +18,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart'; // Para salvar arquivos em mobile
 import 'package:permission_handler/permission_handler.dart'; // Para gerenciar permissões em mobile
-
+import 'package:intl/intl.dart';
 class RelatoriosScreen extends StatefulWidget {
 const RelatoriosScreen({super.key});
 
@@ -42,7 +42,12 @@ TextEditingController _maxBancasController = TextEditingController();
 @override
 void initState() {
 super.initState();
-print('[RelatoriosScreen] initState chamado às 05:34 PM -03, Friday, May 30, 2025');
+// Log dinâmico com a data e hora atuais e formato brasileiro
+final agora = DateTime.now();
+// Usando o formato que você solicitou anteriormente para consistência
+final formatoBrasileiro = DateFormat("dd/MM/yyyy 'às' HH:mm:ss", 'pt_BR');
+print('[RelatoriosScreen] initState chamado em: ${formatoBrasileiro.format(agora)}');
+
 _fetchFeirantes();
 }
 
