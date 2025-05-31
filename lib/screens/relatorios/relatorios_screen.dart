@@ -522,8 +522,9 @@ pw.Table(
 border: pw.TableBorder.all(color: PdfColors.grey300),
 columnWidths: {
 0: const pw.FixedColumnWidth(30), // Qtd Bancas
-1: const pw.FixedColumnWidth(50), // Local Coleta
-2: const pw.FixedColumnWidth(60), // Data Cadastro
+1: const pw.FixedColumnWidth(45), // Local Coleta (reduzido um pouco)
+2: const pw.FixedColumnWidth(55), // Data Cadastro (reduzido um pouco)
+3: const pw.FixedColumnWidth(55), // Data Atualização (NOVA)
 },
 children: [
 pw.TableRow(
@@ -534,13 +535,23 @@ children: [
 pw.Text('Qtd Bancas', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
 pw.Text('Local Coleta', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
 pw.Text('Data Cadastro', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+pw.Text('Data Atualização', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)), // Novo Cabeçalho
 ],
 ),
 pw.TableRow(
 children: [
 pw.Text(feirante.quantidadeBancas.toString(), style: const pw.TextStyle(fontSize: 9)),
 pw.Text(feirante.localColeta ?? '', style: const pw.TextStyle(fontSize: 9)),
-pw.Text(feirante.dataCadastro != null ? DateFormat('dd/MM/yyyy HH:mm').format(feirante.dataCadastro!) : '', style: const pw.TextStyle(fontSize: 9)),
+pw.Text(
+feirante.dataCadastro != null
+? DateFormat('dd/MM/yyyy HH:mm').format(feirante.dataCadastro!)
+    : '',
+style: const pw.TextStyle(fontSize: 9)),
+pw.Text( // Nova célula para Data Atualização
+feirante.dataAtualizacao != null
+? DateFormat('dd/MM/yyyy HH:mm').format(feirante.dataAtualizacao!)
+    : '',
+style: const pw.TextStyle(fontSize: 9)),
 ],
 decoration: const pw.BoxDecoration(
 color: PdfColors.white,

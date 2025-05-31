@@ -58,13 +58,14 @@ class FeiranteService {
             'produtos',
             'quantidade_bancas',
             'local_coleta',
-            'xata.createdAt', // <-- Adicione este campo para obter a data de criação
+            'xata.createdAt',
+            'xata.updatedAt', // Adicionar esta linha
           ],
         }),
       );
 
-      print('📥 Status: ${response.statusCode}');
-      print('📥 Resposta bruta: ${response.body}');
+      print('📥 Status da busca de feirantes: ${response.statusCode}');
+      print('📥 Resposta bruta da busca de feirantes: ${response.body}');
 
       if (response.statusCode == 200) {
         final decodedBody = const Utf8Decoder().convert(response.bodyBytes);
@@ -79,6 +80,7 @@ class FeiranteService {
       throw Exception('Exceção ao buscar feirantes: $e');
     }
   }
+
 
   // **NOVA IMPLEMENTAÇÃO DE getAllFeirantes (ou a que você já tem, ajustada):**
   Future<List<Feirante>> getAllFeirantes() async {

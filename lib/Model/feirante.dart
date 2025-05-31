@@ -18,6 +18,7 @@ class Feirante {
   final int quantidadeBancas;
   final String localColeta;
   final DateTime? dataCadastro;
+  final DateTime? dataAtualizacao; // Novo campo
 
   Feirante({
     this.id,
@@ -34,6 +35,7 @@ class Feirante {
     required this.quantidadeBancas,
     required this.localColeta,
     this.dataCadastro,
+    this.dataAtualizacao, // Adicionado ao construtor
   });
 
   factory Feirante.fromJson(Map<String, dynamic> json) {
@@ -68,15 +70,13 @@ class Feirante {
       return null;
     }
 
-    // MODIFICAÇÃO PRINCIPAL AQUI:
-    // Acessar o campo 'createdAt' dentro do objeto aninhado 'xata'
-    String? dataCadastroString;
+    String? createdAtString;
+    String? updatedAtString; // Variável para updatedAt
+
     if (json['xata'] != null && json['xata'] is Map<String, dynamic>) {
-      dataCadastroString = json['xata']['createdAt'] as String?;
+      createdAtString = json['xata']['createdAt'] as String?;
+      updatedAtString = json['xata']['updatedAt'] as String?; // Extrair updatedAt
     } else {
-      // Fallback ou log se a estrutura 'xata' não for encontrada como esperado
-      // Isso pode acontecer se a coluna 'xata.createdAt' não for solicitada
-      // ou se a resposta da API mudar.
       print("WARN: Estrutura json['xata'] não encontrada ou não é um mapa no registro com id: ${json['id']}");
     }
 
@@ -94,11 +94,14 @@ class Feirante {
       produtosSelecionados: _convertListToSet(json['produtos']),
       quantidadeBancas: (json['quantidade_bancas'] as num?)?.toInt() ?? 0,
       localColeta: json['local_coleta'] as String? ?? '',
-      dataCadastro: _parseDateTime(dataCadastroString),
+      dataCadastro: _parseDateTime(createdAtString),
+      dataAtualizacao: _parseDateTime(updatedAtString), // Passar para o construtor
     );
   }
 
   Map<String, dynamic> toJson() {
+    // O toJson não precisa incluir dataCadastro ou dataAtualizacao,
+    // pois são campos gerenciados pelo Xata (xata.createdAt, xata.updatedAt)
     return {
       'nome': nome,
       'cpf': cpf,
